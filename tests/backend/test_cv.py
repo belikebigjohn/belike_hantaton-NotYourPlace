@@ -210,3 +210,31 @@ def test_whole_plate_crop_can_be_read_when_scene_detector_misses_it():
     assert engine._read_plate(image,'scene')[0]['value']==''
     # Ordinary 16:9 photos cannot enter this fallback.
     assert engine._read_plate(np.zeros((720,1280,3),dtype=np.uint8),'plate')[0]['value']==''
+
+
+@pytest.mark.parametrize('readings,expected', [
+    ([('A123BC77',.99),('A123BC77',.98)],'А123ВС77'),
+    ([('A123BC77',.99),('A123BC99',.99)],''),
+    ([('A123BC77',.99),('A123BC77',.6)],''),
+    ([('77',.99),('77',.99)],''),
+])
+def test_tiled_region_anchor_requires_two_agreeing_full_ocr_readings(readings,expected):
+    engine=CVEngine()
+    calls=[]
+    def detect(image):
+        calls.append(image.shape)
+        # Main image first, then a region fragment in the first search tile.
+        return [plate_prediction('',bounds=(220,100,250,125)).detection] if len(calls)==2 else []
+    values=iter(readings)
+    def ocr(image):
+        text,score=next(values)
+        return SimpleNamespace(text=text,confidence=score)
+    engine.alpr=SimpleNamespace(detector=SimpleNamespace(predict=detect),ocr=SimpleNamespace(predict=ocr))
+    result,_=engine._read_plate(np.zeros((800,1000,3),dtype=np.uint8),'scene')
+    assert result['value']==expected
+    assert len(calls)==10
+    if expected:
+        assert result['bbox']==[138,98,114,29]
+        assert result['needs_review'] is True
+        assert result['candidates'][0]['source']=='small_plate_recovery'
+        assert result['candidates'][0]['detection_confidence'] is None

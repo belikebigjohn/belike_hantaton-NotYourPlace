@@ -60,7 +60,7 @@ def main():
             detected,_=engine._read_plate(image,'plate')
             # Scene path uses the same detector/reader without the close-up
             # fallback and reproduces the old detector-only behavior on crops.
-            baseline,_=engine._read_plate(image,'scene')
+            baseline,_=engine._read_plate(image,'scene',recover=False)
             values={'direct_ocr':normalize_plate(direct.text) if direct else '', 'detector_only_pipeline':baseline['value'],'closeup_pipeline':detected['value']}
             for key,value in values.items(): counts[key]+=value==expected
             if values['closeup_pipeline']!=expected:

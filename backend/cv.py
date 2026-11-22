@@ -162,14 +162,14 @@ class CVEngine:
     def health(self):
         return {"opencv": cv2.__version__, "plate": {"ready": self.alpr is not None, "detector": "yolo-v9-t-384", "ocr": "nomeroff-ru-shufflenet-v3.3"}, "road_signs": {"ready": self.sign_model is not None, "classes": len(self.sign_labels), "supports": ["6.4", "8.17"] if self.sign_model else []}, "marking": {"ready": False}, "vehicle_disability_sign": {"ready": False}, "errors": self.errors}
 
-    def _read_plate(self, image: np.ndarray, photo_id: str) -> tuple[dict, bool]:
+    def _read_plate(self, image: np.ndarray, photo_id: str, recover: bool = True) -> tuple[dict, bool]:
         """Independent inference result; every box stays in its source image."""
         candidates = []
         complete = False
         crop_fallback = False
         if self.alpr is not None:
             try:
-                for item in self._plate_predictions(image):
+                for item in self._plate_predictions(image, recover=recover):
                     bbox = item.detection.bounding_box
                     image_h, image_w = image.shape[:2]
                     x1, y1 = max(0, int(bbox.x1)), max(0, int(bbox.y1))
@@ -183,7 +183,7 @@ class CVEngine:
                     value = normalize_plate(item.ocr.text) if item.ocr else ""
                     score = model_score(item.ocr.confidence) if item.ocr else None
                     valid = bool(RU_PATTERN.fullmatch(value))
-                    candidates.append({"value": value if valid else "", "raw_value": item.ocr.text if item.ocr else "", "confidence": score, "detection_confidence": model_score(item.detection.confidence), "bbox": [x1, y1, x2 - x1, y2 - y1], "photo_id": photo_id, "format_matches": valid})
+                    candidates.append({"value": value if valid else "", "raw_value": item.ocr.text if item.ocr else "", "confidence": score, "detection_confidence": model_score(item.detection.confidence), "bbox": [x1, y1, x2 - x1, y2 - y1], "photo_id": photo_id, "format_matches": valid, "source": getattr(item,"source","detector")})
                 complete = True
             except Exception:
                 # Keep partial results visible but never use them for confident comparison.
@@ -209,10 +209,10 @@ class CVEngine:
                     complete = False
         candidates.sort(key=lambda item: (item["format_matches"], item["confidence"] or 0), reverse=True)
         best = candidates[0] if candidates else {"value": "", "confidence": None, "bbox": None}
-        needs_review = crop_fallback or not complete or not best["value"] or not RU_PATTERN.fullmatch(best["value"]) or (best["confidence"] or 0) < .9 or len(candidates) != 1
+        needs_review = crop_fallback or best.get("source") == "small_plate_recovery" or not complete or not best["value"] or not RU_PATTERN.fullmatch(best["value"]) or (best["confidence"] or 0) < .9 or len(candidates) != 1
         return {"value": best["value"], "confidence": best["confidence"], "bbox": best["bbox"], "needs_review": bool(needs_review), "candidates": candidates, "photo_id": photo_id}, complete
 
-    def _plate_predictions(self, image):
+    def _plate_predictions(self, image, recover=True):
         """Filter geometry before OCR and suppress nested region detections.
 
         Keep the published OCR's unconstrained reading: never fill missing
@@ -236,6 +236,58 @@ class CVEngine:
                    for _, (ox1,oy1,ox2,oy2) in detections):
                 continue
             results.append(SimpleNamespace(detection=detection, ocr=self.alpr.ocr.predict(image[y1:y2,x1:x2])))
+        if recover and not any(item.ocr and RU_PATTERN.fullmatch(normalize_plate(item.ocr.text)) for item in results):
+            results.extend(self._small_plate_predictions(image))
+        return results
+
+    def _small_plate_predictions(self, image):
+        """Bounded overlapping search, including region-panel anchors.
+
+        Two independently cropped OCR readings must agree. The expanded box has
+        no full-plate detector confidence, and always requires human review.
+        """
+        height,width=image.shape[:2]
+        if min(height,width)<48: return []
+        tile_w,tile_h=max(1,width//2),max(1,height//2)
+        proposals=[]
+        for y in [0,(height-tile_h)//2,height-tile_h]:
+            for x in [0,(width-tile_w)//2,width-tile_w]:
+                for detection in self.alpr.detector.predict(image[y:y+tile_h,x:x+tile_w]):
+                    box=detection.bounding_box
+                    x1,y1=max(0,x+int(box.x1)),max(0,y+int(box.y1))
+                    x2,y2=min(width,x+int(box.x2)),min(height,y+int(box.y2))
+                    h=y2-y1
+                    if h<10 or x2<=x1: continue
+                    ratio=(x2-x1)/h
+                    if .65<=ratio<2.5:
+                        # The visible region panel supplies location/height only;
+                        # every letter and digit is read from the expanded crop.
+                        first=(max(0,x2-round(4.5*h)),max(0,y1-round(.08*h)),min(width,x2+round(.08*h)),min(height,y2+round(.08*h)))
+                        second=(max(0,x2-round(4.8*h)),first[1],first[2],first[3])
+                    elif 2.5<=ratio<=7:
+                        first=(x1,y1,x2,y2)
+                        second=(max(0,x1-round(.04*(x2-x1))),max(0,y1-round(.08*h)),min(width,x2+round(.04*(x2-x1))),min(height,y2+round(.08*h)))
+                    else: continue
+                    if first==second: continue
+                    if any(sum(abs(a-b) for a,b in zip(first,old[0]))<max(8,h*.5) for old in proposals): continue
+                    proposals.append((first,second))
+        results=[]
+        for first,second in proposals[:12]:
+            reads=[]
+            for left,top,right,bottom in (first,second):
+                reads.append(self.alpr.ocr.predict(image[top:bottom,left:right]))
+            if not all(read and (model_score(read.confidence) or 0)>=.9 for read in reads): continue
+            value=normalize_plate(reads[0].text)
+            if not RU_PATTERN.fullmatch(value) or value!=normalize_plate(reads[1].text): continue
+            left,top,right,bottom=first
+            duplicate=False
+            for old in results:
+                b=old.detection.bounding_box
+                overlap=max(0,min(right,b.x2)-max(left,b.x1))*max(0,min(bottom,b.y2)-max(top,b.y1))
+                if normalize_plate(old.ocr.text)==value and overlap/max(1,min((right-left)*(bottom-top),(b.x2-b.x1)*(b.y2-b.y1)))>.6:
+                    duplicate=True;break
+            if not duplicate:
+                results.append(SimpleNamespace(detection=SimpleNamespace(bounding_box=SimpleNamespace(x1=left,y1=top,x2=right,y2=bottom),confidence=None),ocr=reads[0],source="small_plate_recovery"))
         return results
 
     def analyze(self, scene: np.ndarray, plate: np.ndarray) -> dict:
