@@ -121,7 +121,7 @@ class Coordinates(BaseModel):
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
     consent: bool = False
-    provider: Literal["photon"] | None = None
+    provider: Literal["photon", "nominatim"] | None = None
 
 
 def read_report(report_id, owner):
@@ -363,6 +363,9 @@ def reverse_geocode(payload: Coordinates):
     if payload.provider == "photon":
         provider = "photon"
         geocoder_url = os.getenv("PHOTON_URL", "https://photon.komoot.io/reverse")
+    elif payload.provider == "nominatim":
+        provider = "nominatim"
+        geocoder_url = os.getenv("NOMINATIM_URL", "https://nominatim.openstreetmap.org/reverse")
     elif os.getenv("GEOCODER_ENABLED", "0") != "1" or not geocoder_url:
         return fallback
     key = (provider, round(payload.latitude, 5), round(payload.longitude, 5))
@@ -373,7 +376,10 @@ def reverse_geocode(payload: Coordinates):
         geocoder_last = time.monotonic()
         try:
             params = {"lat": payload.latitude, "lon": payload.longitude, "lang": "ru", "limit": 1} if provider == "photon" else {"lat": payload.latitude, "lon": payload.longitude, "format": "jsonv2", "accept-language": "ru", "zoom": 18}
-            response = httpx.get(geocoder_url, params=params, headers={"User-Agent": os.getenv("GEOCODER_USER_AGENT", "ChuzhoeMesto/0.2 (civic accessibility report preparation)"), "Accept": "application/json"}, timeout=8)
+            user_agent = os.getenv("GEOCODER_USER_AGENT", "ChuzhoeMesto/0.2")
+            if "github.com/belikebigjohn/belike_hantaton-NotYourPlace" not in user_agent:
+                user_agent += " (+https://github.com/belikebigjohn/belike_hantaton-NotYourPlace)"
+            response = httpx.get(geocoder_url, params=params, headers={"User-Agent": user_agent, "Accept": "application/json"}, timeout=12)
             response.raise_for_status()
             data = response.json()
             if provider == "photon":
@@ -383,15 +389,19 @@ def reverse_geocode(payload: Coordinates):
                 address = ", ".join(dict.fromkeys(str(value) for value in components if value))
                 source = "Photon / komoot · © OpenStreetMap contributors"
             else:
-                address = data.get("display_name")
-                source = "OpenStreetMap / Nominatim"
+                parts = data.get("address", {})
+                city = next((parts.get(field) for field in ("city", "town", "village", "municipality", "hamlet") if parts.get(field)), None)
+                road = next((parts.get(field) for field in ("road", "pedestrian", "residential", "footway") if parts.get(field)), None)
+                components = [parts.get("country"), parts.get("state"), city, road, parts.get("house_number")]
+                address = ", ".join(dict.fromkeys(str(value) for value in components if value)) or data.get("display_name")
+                source = "Nominatim · © OpenStreetMap contributors"
             if not address:
-                return fallback
+                return {**fallback, "reason": "not_found"}
             result = {"address": address, "source": source, "needs_manual": False}
             geocoder_cache[key] = result
             return result
         except (httpx.HTTPError, ValueError, KeyError):
-            return fallback
+            return {**fallback, "reason": "unavailable"}
 
 
 frontend_dist = ROOT / "frontend" / "dist"

@@ -220,3 +220,42 @@ def test_map_config_exposes_only_public_browser_key(clients,monkeypatch):
     monkeypatch.setenv('YANDEX_MAPS_API_KEY','public-browser-test-key')
     monkeypatch.setenv('PRIVATE_EXAMPLE_SECRET','must-not-be-exposed')
     assert first.get('/api/map-config').json()=={'yandex_js_key':'public-browser-test-key'}
+
+def test_nominatim_explicit_consent_formats_address_and_caches(clients,monkeypatch):
+    from types import SimpleNamespace
+    first,_=clients
+    main.geocoder_cache.clear()
+    calls=[]
+    def lookup(url,**kwargs):
+        calls.append((url,kwargs))
+        return SimpleNamespace(raise_for_status=lambda:None,json=lambda:{'address':{'country':'Россия','state':'Тестовая область','city':'Тестовый город','road':'Тестовая улица','house_number':'10'}})
+    monkeypatch.setattr(main.httpx,'get',lookup)
+    monkeypatch.setenv('GEOCODER_ENABLED','0')
+    payload={'latitude':56.8,'longitude':60.6,'provider':'nominatim','consent':True}
+    result=first.post('/api/geocode/reverse',json=payload).json()
+    assert result['address']=='Россия, Тестовая область, Тестовый город, Тестовая улица, 10'
+    assert result['needs_manual'] is False
+    assert 'OpenStreetMap' in result['source']
+    assert calls[0][0]=='https://nominatim.openstreetmap.org/reverse'
+    assert calls[0][1]['params']['accept-language']=='ru'
+    assert 'belike_hantaton-NotYourPlace' in calls[0][1]['headers']['User-Agent']
+    assert first.post('/api/geocode/reverse',json=payload).json()==result
+    assert len(calls)==1
+
+
+def test_named_nominatim_without_consent_never_transmits_coordinates(clients,monkeypatch):
+    first,_=clients
+    def forbidden(*args,**kwargs):raise AssertionError('Must not send coordinates')
+    monkeypatch.setattr(main.httpx,'get',forbidden)
+    result=first.post('/api/geocode/reverse',json={'latitude':56.8,'longitude':60.6,'provider':'nominatim','consent':False}).json()
+    assert result=={'address':None,'source':'manual','needs_manual':True}
+
+
+def test_geocoder_unavailable_is_distinguished_from_empty_result(clients,monkeypatch):
+    first,_=clients
+    main.geocoder_cache.clear()
+    def failed(*args,**kwargs):raise main.httpx.ConnectError('test unavailable')
+    monkeypatch.setattr(main.httpx,'get',failed)
+    response=first.post('/api/geocode/reverse',json={'latitude':55.1,'longitude':61.1,'provider':'nominatim','consent':True})
+    assert response.json()['reason']=='unavailable'
+    assert response.json()['address'] is None
