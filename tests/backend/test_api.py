@@ -212,3 +212,11 @@ def test_two_photo_numbers_must_agree_before_package_preparation(clients, pictur
     assert first.get(f"/api/reports/{report_id}/export").status_code == 200
     different_final = first.patch(f"/api/reports/{report_id}", json={**payload, "plate": "В321АА186", "analysis": analysis})
     assert different_final.status_code == 422
+
+def test_map_config_exposes_only_public_browser_key(clients,monkeypatch):
+    first,_=clients
+    monkeypatch.delenv('YANDEX_MAPS_API_KEY',raising=False)
+    assert first.get('/api/map-config').json()=={'yandex_js_key':''}
+    monkeypatch.setenv('YANDEX_MAPS_API_KEY','public-browser-test-key')
+    monkeypatch.setenv('PRIVATE_EXAMPLE_SECRET','must-not-be-exposed')
+    assert first.get('/api/map-config').json()=={'yandex_js_key':'public-browser-test-key'}

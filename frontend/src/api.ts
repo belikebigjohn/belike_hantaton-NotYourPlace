@@ -11,6 +11,7 @@ function editable(data:Partial<Draft>){const {id,created_at,updated_at,photos,cr
 let sessionBootstrap:Promise<unknown>|null=null;
 function ensureSession(){if(!sessionBootstrap)sessionBootstrap=request('/health').catch(error=>{sessionBootstrap=null;throw error;});return sessionBootstrap;}
 export const api={
+ mapConfig:()=>request<{yandex_js_key:string}>('/map-config'),
  list:()=>request<Report[]>('/reports'), get:(id:string)=>request<Report>(`/reports/${encodeURIComponent(id)}`),
  create:async(data:Draft)=>{await ensureSession();const init=json('POST',editable(data));if(data.creation_key)init.headers={...init.headers,'Idempotency-Key':data.creation_key};return request<Report>('/reports',init);}, update:(id:string,data:Partial<Draft>)=>request<Report>(`/reports/${encodeURIComponent(id)}`,json('PATCH',editable(data))),
  remove:(id:string)=>request<{ok:boolean}>(`/reports/${encodeURIComponent(id)}`,{method:'DELETE'}),

@@ -149,6 +149,12 @@ def health():
     return {"status": "ok", "models": engine.health(), "demo_mode": os.getenv("DEMO_MODE", "0") == "1"}
 
 
+@app.get("/api/map-config")
+def map_config():
+    # Public browser SDK key. Restrict allowed HTTP Referers in Yandex Console.
+    return {"yandex_js_key": os.getenv("YANDEX_MAPS_API_KEY", "")}
+
+
 @app.post("/api/analyze")
 async def analyze(scene_photo: UploadFile = File(...), plate_photo: UploadFile = File(...)):
     import asyncio
