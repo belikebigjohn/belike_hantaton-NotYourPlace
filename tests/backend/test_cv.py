@@ -238,3 +238,24 @@ def test_tiled_region_anchor_requires_two_agreeing_full_ocr_readings(readings,ex
         assert result['needs_review'] is True
         assert result['candidates'][0]['source']=='small_plate_recovery'
         assert result['candidates'][0]['detection_confidence'] is None
+
+
+@pytest.mark.parametrize('count,expected',[(1,''),(2,''),(3,'А123ВС77')])
+def test_border_recovery_requires_consensus_across_three_regions(monkeypatch,count,expected):
+    import backend.plate_geometry as geometry
+    engine=CVEngine()
+    monkeypatch.setattr(geometry,'plate_border_proposals',lambda image:[(10+i,10,200,60) for i in range(count)])
+    engine.alpr=SimpleNamespace(ocr=SimpleNamespace(predict=lambda crop:SimpleNamespace(text='A123BC77',confidence=.99)))
+    result=engine._large_plate_predictions(np.zeros((100,240,3),dtype=np.uint8))
+    assert (normalize_plate(result[0].ocr.text) if result else '')==expected
+    if result: assert result[0].detection.confidence is None
+
+
+def test_border_proposals_are_bounded_and_blank_images_have_no_proposals():
+    from backend.plate_geometry import plate_border_proposals
+    assert plate_border_proposals(np.zeros((200,400,3),dtype=np.uint8))==[]
+    image=np.zeros((300,600,3),dtype=np.uint8)
+    cv2.rectangle(image,(50,100),(550,200),(255,255,255),2)
+    boxes=plate_border_proposals(image)
+    assert boxes and len(boxes)<=24
+    assert all(0<=x1<x2<=600 and 0<=y1<y2<=300 for x1,y1,x2,y2 in boxes)

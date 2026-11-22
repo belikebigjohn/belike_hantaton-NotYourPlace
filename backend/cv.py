@@ -209,7 +209,7 @@ class CVEngine:
                     complete = False
         candidates.sort(key=lambda item: (item["format_matches"], item["confidence"] or 0), reverse=True)
         best = candidates[0] if candidates else {"value": "", "confidence": None, "bbox": None}
-        needs_review = crop_fallback or best.get("source") == "small_plate_recovery" or not complete or not best["value"] or not RU_PATTERN.fullmatch(best["value"]) or (best["confidence"] or 0) < .9 or len(candidates) != 1
+        needs_review = crop_fallback or best.get("source") in {"small_plate_recovery","geometric_plate_recovery"} or not complete or not best["value"] or not RU_PATTERN.fullmatch(best["value"]) or (best["confidence"] or 0) < .9 or len(candidates) != 1
         return {"value": best["value"], "confidence": best["confidence"], "bbox": best["bbox"], "needs_review": bool(needs_review), "candidates": candidates, "photo_id": photo_id}, complete
 
     def _plate_predictions(self, image, recover=True):
@@ -238,6 +238,26 @@ class CVEngine:
             results.append(SimpleNamespace(detection=detection, ocr=self.alpr.ocr.predict(image[y1:y2,x1:x2])))
         if recover and not any(item.ocr and RU_PATTERN.fullmatch(normalize_plate(item.ocr.text)) for item in results):
             results.extend(self._small_plate_predictions(image))
+        if recover and not any(item.ocr and RU_PATTERN.fullmatch(normalize_plate(item.ocr.text)) for item in results):
+            results.extend(self._large_plate_predictions(image))
+        return results
+
+    def _large_plate_predictions(self,image):
+        from backend.plate_geometry import plate_border_proposals
+        votes={}
+        for left,top,right,bottom in plate_border_proposals(image):
+            reading=self.alpr.ocr.predict(image[top:bottom,left:right])
+            if not reading or (model_score(reading.confidence) or 0)<.93: continue
+            value=normalize_plate(reading.text)
+            if not RU_PATTERN.fullmatch(value): continue
+            votes.setdefault(value,[]).append((reading,(left,top,right,bottom)))
+        results=[]
+        for readings in votes.values():
+            # A single confident hallucination, or its padded duplicate, is
+            # insufficient. Three different border-derived regions must agree.
+            if len(readings)<3: continue
+            reading,(left,top,right,bottom)=max(readings,key=lambda item:model_score(item[0].confidence) or 0)
+            results.append(SimpleNamespace(detection=SimpleNamespace(bounding_box=SimpleNamespace(x1=left,y1=top,x2=right,y2=bottom),confidence=None),ocr=reading,source="geometric_plate_recovery"))
         return results
 
     def _small_plate_predictions(self, image):
