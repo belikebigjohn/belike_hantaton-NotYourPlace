@@ -19,4 +19,6 @@ models/nomeroff_text_detector.py
 models/validation/
 models/.ultralytics/
 models/checksums.local.json
+models/datasets/
+*.tsbuildinfo
 models/nomeroff-ru-config.json
