@@ -4,7 +4,6 @@ import type {Analysis,Kind,PlateCandidate} from './types';
 import {photoLabels,plateColors,readableCandidates,reviewComparison,reviewValues,selectedPlateBox} from './analysisReview';
 import PhotoPreview from './PhotoPreview';
 import RussianPlateInput from './RussianPlateInput';
-import DemoRegistry from './DemoRegistry';
 import {isRussianPlate} from './plateFormat';
 import s from './App.module.css';
 interface Props {analysis:Analysis|null;urls:Partial<Record<Kind,string>>;onEdit:(kind:Kind,value:string,candidate?:PlateCandidate)=>void;onRetake:(kind:Kind)=>void}
@@ -24,6 +23,5 @@ export default function PlateVerification({analysis,urls,onEdit,onRetake}:Props)
   </article>;
  })}
  <div className={`${s.comparison} ${comparison==='match'?s.comparisonMatch:comparison==='mismatch'?s.comparisonMismatch:''}`} role="status" aria-live="polite">{comparison==='match'?<CheckCircle2 size={24}/>:<Info size={24}/>}<div><strong>{comparison==='match'?'Номера на двух фото совпадают':comparison==='mismatch'?'Номера на фото различаются':'Проверьте номер на каждом фото'}</strong><p>{comparison==='match'?'Подтвердите, что на обоих снимках один автомобиль.':comparison==='mismatch'?'Выберите нужный автомобиль или исправьте чтение по снимку. Продолжить можно после совпадения номеров.':'Заполните оба поля. Если номер не читается, сделайте новый снимок.'}</p></div></div>
- <DemoRegistry plate={comparison==='match'?review.scene_value:''}/>
  </section>;
 }

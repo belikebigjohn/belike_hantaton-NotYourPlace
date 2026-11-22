@@ -6,3 +6,7 @@ export const demoVehicles=[
  {plate:'E300EY763',vin:'TEST0000000000003',name:'Павел Макетов',licence:'00 00 000003',car:'Kia Rio'},
 ];
 export function lookupDemoVehicle(plate:string){return isRussianPlate(plate)?demoVehicles.find(vehicle=>vehicle.plate===latinPlateValue(plate)):undefined;}
+export function registryStatement(plate:string):string{
+ if(!isRussianPlate(plate))return '';
+ return `По результатам автоматической проверки системы автомобиль с указанным государственным регистрационным номером ${lookupDemoVehicle(plate)?'найден':'не найден'} в демонстрационной базе автомобилей для парковки на местах для инвалидов. Проверка по государственным реестрам не проводилась.`;
+}

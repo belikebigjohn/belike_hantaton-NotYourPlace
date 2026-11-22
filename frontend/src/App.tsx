@@ -7,6 +7,7 @@ import ReviewAssistance from './ReviewAssistance';
 import {confirmReview,editReview,emptyAnalysis,normalizePlateValue,plateColors,reviewComparison,reviewValues,selectedPlateBox,signStatusText} from './analysisReview';
 import PlateVerification from './PlateVerification';
 import YandexLocation from './YandexLocation';
+import {statementForDraft as statement} from './statement';
 import s from './App.module.css';
 import DisplaySettings from './DisplaySettings';
 import {readDisplayPreferences,saveDisplayPreferences} from './displayPreferences';
@@ -16,7 +17,6 @@ const blank=():Draft=>({creation_key:crypto.randomUUID(),status:'draft',plate:''
 const format=(date?:string)=>date?new Intl.DateTimeFormat('ru-RU',{dateStyle:'medium',timeStyle:'short'}).format(new Date(date)):'—';
 const status=(value:string)=>({draft:'Черновик',prepared:'Пакет готов',exported:'Пакет скачан',sent:'Отправлено вручную'}[value]||value);
 function toInput(date:string){const d=new Date(date);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
-function statement(data:Draft){return `Прошу проверить обстоятельства парковки автомобиля с государственным регистрационным номером ${data.plate} по адресу: ${data.address}.\n\nДата и время наблюдения: ${format(data.observed_at)}.\nНа месте парковки наблюдалось: ${data.designation}.\n${data.observation?`\nДополнительные обстоятельства: ${data.observation}\n`:''}\nСведения о праве пользователя автомобиля на парковку мне неизвестны. Прошу проверить изложенные обстоятельства и сообщить о результатах по указанному адресу для ответа.\n\n`;}
 export default function App(){
  const [display,setDisplay]=useState(readDisplayPreferences),[displayOpen,setDisplayOpen]=useState(false);const displayTrigger=useRef<HTMLButtonElement>(null);
  const closeDisplay=()=>{setDisplayOpen(false);displayTrigger.current?.focus();};
@@ -73,6 +73,7 @@ export default function App(){
  <button className={s.historyLink} onClick={()=>void analyze()}>Повторить распознавание <RefreshCw size={18}/></button>
  <PlateVerification analysis={draft.analysis} urls={{scene:photoUrl('scene'),plate:photoUrl('plate')}} onEdit={editPlate} onRetake={setScreen}/>
  <label className={s.field}>Что вы видите на месте?<select value={draft.designation} onChange={event=>{update({designation:event.target.value,analysis:confirmReview(draft.analysis,false)});setPhotosConfirmed(false);}}><option value="">Выберите по фотографии</option><option>Знак «Парковка» с табличкой «Инвалиды»</option><option>Разметка с символом инвалидности</option><option>Знак и разметка с символом инвалидности</option><option>Обозначение требует проверки</option></select></label>
+ <label className={s.checkbox}><input type="checkbox" checked={draft.analysis?.plate_review?.disability_sign_not_visible===true} onChange={event=>{const original=draft.analysis||emptyAnalysis();update({analysis:{...original,plate_review:{...reviewValues(original),disability_sign_not_visible:event.target.checked,confirmed:false}},statement:"",confirmed:false,status:"draft"});setPhotosConfirmed(false);}}/><span>Знак «Инвалид» на автомобиле не виден</span></label><p className={s.hint}>Проверьте переднюю и заднюю стороны автомобиля. Отмечайте только то, что удалось увидеть.</p>
  <label className={`${s.checkbox} ${reviewComparison(draft.analysis)!=='match'?s.disabledCheck:''}`}><input type="checkbox" checked={photosConfirmed} disabled={reviewComparison(draft.analysis)!=='match'} onChange={event=>confirmPhotos(event.target.checked)}/><span>На обоих снимках один автомобиль. Я сверил номер и обозначение места.</span></label>
  <p className={s.hint}>Если знак не найден на фото, это не доказывает его отсутствия на месте.</p>
  <button className={s.primary} onClick={()=>{if(!photoUrl('scene')||!photoUrl('plate'))return setMessage('Добавьте два снимка: общий план и номер автомобиля.');if(reviewComparison(draft.analysis)!=='match')return setMessage('Номера на двух фото должны совпадать. Проверьте оба поля или переснимите автомобиль.');if(!draft.designation||!photosConfirmed||!draft.analysis?.plate_review?.confirmed)return setMessage('Укажите обозначение места и подтвердите проверку фотографий.');void run('Сохраняем сведения…',async()=>{await persist();setScreen('location');});}}><span className={s.actionContent}><span className={s.actionLeading} aria-hidden="true"></span><span className={s.actionLabel}>Далее </span><span className={s.actionTrailing} aria-hidden="true"><ArrowRight size={22}/></span></span></button>
