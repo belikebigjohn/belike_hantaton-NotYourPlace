@@ -1,5 +1,6 @@
 param([string]$Branch)
 $ErrorActionPreference = 'Stop'
+$env:GIT_TERMINAL_PROMPT = '0'
 if (-not $Branch) {
     $Branch = (& git branch --show-current).Trim()
     if ($LASTEXITCODE -ne 0 -or -not $Branch) { throw 'Select a local branch before pushing.' }
@@ -7,7 +8,7 @@ if (-not $Branch) {
 $failed = @()
 foreach ($target in @('origin', 'gitlab')) {
     Write-Output "Pushing $Branch to $target"
-    & git push $target $Branch
+    & git -c credential.interactive=false push $target $Branch
     if ($LASTEXITCODE -ne 0) { $failed += $target }
 }
 if ($failed.Count) {
