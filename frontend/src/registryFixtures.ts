@@ -1,0 +1,8 @@
+import {latinPlateValue,isRussianPlate} from './plateFormat';
+// Entirely invented fixtures. No official registry, disability or identity data.
+export const demoVehicles=[
+ {plate:'A123BC77',vin:'TEST0000000000001',name:'Алексей Примеров',licence:'00 00 000001',car:'Lada Vesta'},
+ {plate:'M456HO199',vin:'TEST0000000000002',name:'Марина Образцова',licence:'00 00 000002',car:'Renault Logan'},
+ {plate:'E300EY763',vin:'TEST0000000000003',name:'Павел Макетов',licence:'00 00 000003',car:'Kia Rio'},
+];
+export function lookupDemoVehicle(plate:string){return isRussianPlate(plate)?demoVehicles.find(vehicle=>vehicle.plate===latinPlateValue(plate)):undefined;}

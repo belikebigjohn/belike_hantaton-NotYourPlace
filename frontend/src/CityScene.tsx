@@ -1,0 +1,1 @@
+export default function CityScene(){return <img src="/accessible-city.png" width="1536" height="1024" alt="Вечерний город: автомобиль рядом со специальным парковочным местом и знаком «Парковка» с табличкой «Инвалиды»" decoding="async" fetchPriority="high"/>}

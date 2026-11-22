@@ -1,0 +1,254 @@
+{
+  "generated_at": "2026-11-22T09:02:21.464743+00:00",
+  "device": "Windows-11-10.0.26300-SP0",
+  "processor": "Intel64 Family 6 Model 165 Stepping 5, GenuineIntel",
+  "health": {
+    "opencv": "5.1.0",
+    "plate": {
+      "ready": true,
+      "detector": "yolo-v9-t-384",
+      "ocr": "nomeroff-ru-shufflenet-v3.3"
+    },
+    "road_signs": {
+      "ready": true,
+      "classes": 146,
+      "supports": [
+        "6.4",
+        "8.17"
+      ]
+    },
+    "marking": {
+      "ready": false
+    },
+    "vehicle_disability_sign": {
+      "ready": false
+    },
+    "errors": {}
+  },
+  "samples": [
+    {
+      "name": "upstream-russian-plate-crop",
+      "expected": "Е300ЕУ763",
+      "exact_match": true,
+      "duration_ms": 767,
+      "result": {
+        "plate": {
+          "value": "Е300ЕУ763",
+          "confidence": 0.9324171476893954,
+          "bbox": [
+            0,
+            0,
+            234,
+            50
+          ],
+          "needs_review": true,
+          "candidates": [
+            {
+              "value": "Е300ЕУ763",
+              "raw_value": "E300EY763",
+              "confidence": 0.9324171476893954,
+              "detection_confidence": 0.8090305924415588,
+              "bbox": [
+                0,
+                0,
+                234,
+                50
+              ],
+              "photo_id": "plate",
+              "format_matches": true
+            }
+          ],
+          "photo_id": "plate"
+        },
+        "plates_by_photo": {
+          "scene": {
+            "value": "",
+            "confidence": null,
+            "bbox": null,
+            "needs_review": true,
+            "candidates": [],
+            "photo_id": "scene"
+          },
+          "plate": {
+            "value": "Е300ЕУ763",
+            "confidence": 0.9324171476893954,
+            "bbox": [
+              0,
+              0,
+              234,
+              50
+            ],
+            "needs_review": false,
+            "candidates": [
+              {
+                "value": "Е300ЕУ763",
+                "raw_value": "E300EY763",
+                "confidence": 0.9324171476893954,
+                "detection_confidence": 0.8090305924415588,
+                "bbox": [
+                  0,
+                  0,
+                  234,
+                  50
+                ],
+                "photo_id": "plate",
+                "format_matches": true
+              }
+            ],
+            "photo_id": "plate"
+          }
+        },
+        "plate_comparison": {
+          "status": "needs_review",
+          "scene_value": "",
+          "plate_value": "Е300ЕУ763"
+        },
+        "signs": [],
+        "parking_accessibility_evidence": "unknown",
+        "explanations": [
+          "Сверьте номер на каждом снимке и исправьте его при необходимости.",
+          "Проверьте, видно ли обозначение специального места и относится ли оно к автомобилю."
+        ],
+        "model_versions": {
+          "plate_detector": "yolo-v9-t-384-license-plate-end2end",
+          "plate_ocr": "nomeroff-ru-shufflenet-v3.3",
+          "road_signs": "DL-teammm-yolov8-146",
+          "marking": null,
+          "vehicle_disability_sign": null
+        },
+        "elapsed_ms": 767,
+        "scope": "Only the supplied images; detection is not a legal finding."
+      }
+    },
+    {
+      "name": "synthetic-demo-not-street-validation",
+      "expected": "А001АА86",
+      "exact_match": false,
+      "duration_ms": 675,
+      "result": {
+        "plate": {
+          "value": "А001АА88",
+          "confidence": 0.9784776568412781,
+          "bbox": [
+            445,
+            471,
+            256,
+            71
+          ],
+          "needs_review": true,
+          "candidates": [
+            {
+              "value": "",
+              "raw_value": "A814ABB1",
+              "confidence": 0.8537797592580318,
+              "detection_confidence": 0.676365852355957,
+              "bbox": [
+                281,
+                288,
+                777,
+                262
+              ],
+              "photo_id": "plate",
+              "format_matches": false
+            },
+            {
+              "value": "А001АА88",
+              "raw_value": "A001AA88",
+              "confidence": 0.9784776568412781,
+              "detection_confidence": 0.4252772331237793,
+              "bbox": [
+                445,
+                471,
+                256,
+                71
+              ],
+              "photo_id": "scene",
+              "format_matches": true
+            }
+          ],
+          "photo_id": "scene"
+        },
+        "plates_by_photo": {
+          "scene": {
+            "value": "А001АА88",
+            "confidence": 0.9784776568412781,
+            "bbox": [
+              445,
+              471,
+              256,
+              71
+            ],
+            "needs_review": false,
+            "candidates": [
+              {
+                "value": "А001АА88",
+                "raw_value": "A001AA88",
+                "confidence": 0.9784776568412781,
+                "detection_confidence": 0.4252772331237793,
+                "bbox": [
+                  445,
+                  471,
+                  256,
+                  71
+                ],
+                "photo_id": "scene",
+                "format_matches": true
+              }
+            ],
+            "photo_id": "scene"
+          },
+          "plate": {
+            "value": "",
+            "confidence": 0.8537797592580318,
+            "bbox": [
+              281,
+              288,
+              777,
+              262
+            ],
+            "needs_review": true,
+            "candidates": [
+              {
+                "value": "",
+                "raw_value": "A814ABB1",
+                "confidence": 0.8537797592580318,
+                "detection_confidence": 0.676365852355957,
+                "bbox": [
+                  281,
+                  288,
+                  777,
+                  262
+                ],
+                "photo_id": "plate",
+                "format_matches": false
+              }
+            ],
+            "photo_id": "plate"
+          }
+        },
+        "plate_comparison": {
+          "status": "needs_review",
+          "scene_value": "А001АА88",
+          "plate_value": ""
+        },
+        "signs": [],
+        "parking_accessibility_evidence": "not_detected",
+        "explanations": [
+          "Сверьте номер на каждом снимке и исправьте его при необходимости.",
+          "Проверьте, видно ли обозначение специального места и относится ли оно к автомобилю."
+        ],
+        "model_versions": {
+          "plate_detector": "yolo-v9-t-384-license-plate-end2end",
+          "plate_ocr": "nomeroff-ru-shufflenet-v3.3",
+          "road_signs": "DL-teammm-yolov8-146",
+          "marking": null,
+          "vehicle_disability_sign": null
+        },
+        "elapsed_ms": 675,
+        "scope": "Only the supplied images; detection is not a legal finding."
+      }
+    }
+  ],
+  "source": "https://raw.githubusercontent.com/ria-com/nomeroff-net/master/data/dataset/OptionsDetector/numberplate_options_example/test/img/ru.png",
+  "limits": "Upstream example may overlap training data; one crop and a synthetic drawing do not estimate precision/recall or generalization. No independent road-sign or windshield/marking validation set is available."
+}

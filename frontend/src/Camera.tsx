@@ -1,0 +1,23 @@
+import {useEffect,useRef,useState} from 'react';
+import {Camera as CameraIcon,Image,RefreshCw,Check,ArrowRight} from 'lucide-react';
+import type {Kind} from './types';
+import s from './App.module.css';
+interface Props{kind:Kind;photo?:string;onPhoto:(file:Blob,source:'camera'|'upload',capturedAt?:string)=>void;onNext:()=>void;error:(message:string)=>void}
+export default function Camera({kind,photo,onPhoto,onNext,error}:Props){
+ const video=useRef<HTMLVideoElement>(null),stream=useRef<MediaStream|null>(null),input=useRef<HTMLInputElement>(null);const mounted=useRef(true),openingRequest=useRef(false);const [active,setActive]=useState(false),[opening,setOpening]=useState(false);
+ const stop=()=>{stream.current?.getTracks().forEach(track=>track.stop());stream.current=null;setActive(false);};
+ useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;stream.current?.getTracks().forEach(track=>track.stop());};},[]);
+ useEffect(()=>{stop();},[kind]);
+ async function open(){if(openingRequest.current)return;openingRequest.current=true;stop();setOpening(true);try{if(!navigator.mediaDevices?.getUserMedia)throw new Error('Откройте галерею и выберите фотографию.');stream.current=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});if(!mounted.current||document.visibilityState==='hidden'){stream.current.getTracks().forEach(track=>track.stop());stream.current=null;return;}setActive(true);if(video.current){video.current.srcObject=stream.current;await video.current.play();}}catch{stop();error('Не удалось открыть камеру. Разрешите доступ или выберите фото из галереи.');}finally{openingRequest.current=false;if(mounted.current)setOpening(false);}}
+ async function accept(file:Blob,source:'camera'|'upload'='upload',capturedAt?:string){try{if(file.size>15*1024*1024||!file.size)throw new Error('Выберите фото размером до 15 МБ.');const header=new Uint8Array(await file.slice(0,12).arrayBuffer());const valid=(header[0]===255&&header[1]===216)||(header[0]===137&&header[1]===80)||(String.fromCharCode(...header.slice(0,4))==='RIFF');if(!valid)throw new Error('Выберите фотографию JPEG, PNG или WebP.');const bitmap=await createImageBitmap(file);if(bitmap.width*bitmap.height>40000000){bitmap.close();throw new Error('Выберите фото до 40 мегапикселей.');}bitmap.close();onPhoto(file,source,capturedAt);stop();}catch(err){error(err instanceof Error?err.message:'Не удалось прочитать фото. Выберите другое.');}}
+ async function snap(){if(!video.current?.videoWidth)return;const capturedAt=new Date().toISOString();const canvas=document.createElement('canvas');canvas.width=video.current.videoWidth;canvas.height=video.current.videoHeight;canvas.getContext('2d')!.drawImage(video.current,0,0);const blob=await new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,'image/jpeg',.95));if(blob)await accept(blob,'camera',capturedAt);}
+ return <><div className={`${s.cameraView} ${kind==='plate'?s.plateCamera:''}`}>
+   {photo&&!active?<img src={photo} alt={kind==='scene'?'Общий план автомобиля и места':'Номер автомобиля'}/>:<div className={s.cameraPlaceholder}><CameraIcon size={48}/><span>{kind==='scene'?'Автомобиль и обозначение места':'Номер в центре кадра'}</span></div>}
+   <video ref={video} muted playsInline autoPlay className={active?s.liveVideo:s.hiddenVideo}/>
+   <div className={s.cornerFrame}><i/><i/><i/><i/></div>{photo&&!active&&<><span key={photo} className={s.captureFeedback}/><span className={s.photoTaken}><Check size={16}/> Фото добавлено</span></>}
+ </div>
+ <div className={s.cameraControls}><button className={s.iconButton} aria-label="Выбрать фото из галереи" onClick={()=>input.current?.click()}><Image size={26}/></button><button className={s.shutter} disabled={opening} aria-label={active?'Снять фото':'Открыть камеру'} onClick={active?snap:open}>{opening?<span className={s.spinner}/>:active?<span/>:<CameraIcon size={26}/>}</button><button className={s.iconButton} aria-label="Переснять фото" onClick={open}><RefreshCw size={25}/></button></div>
+ <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" className={s.hiddenInput} onChange={event=>{const file=event.target.files?.[0];if(file)void accept(file);event.target.value='';}}/>
+ {photo&&<button className={s.primary} onClick={()=>{stop();onNext();}}><span className={s.actionContent}><span className={s.actionLeading} aria-hidden="true"></span><span className={s.actionLabel}>Использовать фото </span><span className={s.actionTrailing} aria-hidden="true"><ArrowRight size={22}/></span></span></button>}
+ </>;
+}

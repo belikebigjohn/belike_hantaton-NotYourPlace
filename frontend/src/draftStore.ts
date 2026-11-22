@@ -1,0 +1,4 @@
+import type { LocalDraft } from './types';
+const open=()=>new Promise<IDBDatabase>((resolve,reject)=>{const req=indexedDB.open('chuzhoe-mesto-draft-v2',1);req.onupgradeneeded=()=>req.result.createObjectStore('drafts');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});
+export async function saveDraft(value:LocalDraft|null){const db=await open();await new Promise<void>((resolve,reject)=>{const tx=db.transaction('drafts','readwrite');if(value)tx.objectStore('drafts').put(value,'current');else tx.objectStore('drafts').delete('current');tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});db.close();}
+export async function loadDraft():Promise<LocalDraft|null>{const db=await open();return new Promise((resolve,reject)=>{const req=db.transaction('drafts').objectStore('drafts').get('current');req.onsuccess=()=>{db.close();resolve(req.result||null);};req.onerror=()=>reject(req.error);});}

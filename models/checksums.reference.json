@@ -1,0 +1,7 @@
+{
+  "plate-detector/yolo-v9-t-384-license-plate-end2end/yolo-v9-t-384-license-plates-end2end.onnx": "888397b96d761c89db40bc9c305838e8652660f5e282c2cadebbe8d2951a77a8",
+  "nomeroff-ru-config.json": "da0aa1ed5418de7789cf15f8fdea0442c5116b41ca9b2fc5c3015a0ecbbffda7",
+  "nomeroff-ru.ckpt": "f34ffc8a629e66bb7a0f51e81258b48042a8bcd02fb24a8e3391eb0edf2e5503",
+  "road_sign_labels.yaml": "be8ff86bca92f04879ca5633dc08085d591cd5c71a3e21f7d2fb01c2d5ea4dff",
+  "road_signs/best.pt": "bf7e6a991862ed3b6949e5b7d77db76ac86a13c222117bbe18c33c9a36b2e3c0"
+}

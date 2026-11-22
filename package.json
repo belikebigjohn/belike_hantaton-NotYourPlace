@@ -1,0 +1,14 @@
+{
+  "name": "chuzhoe-mesto",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "start": "node scripts/dev.mjs --production",
+    "build": "npm --prefix frontend run build",
+    "check": "npm --prefix frontend run typecheck",
+    "lint": "npm --prefix frontend run lint",
+    "test": "npm --prefix frontend test"
+  }
+}

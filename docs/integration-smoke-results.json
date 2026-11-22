@@ -1,0 +1,37 @@
+{
+  "models": {
+    "opencv": "5.1.0",
+    "plate": {
+      "ready": true,
+      "detector": "yolo-v9-t-384",
+      "ocr": "nomeroff-ru-shufflenet-v3.3"
+    },
+    "road_signs": {
+      "ready": true,
+      "classes": 146,
+      "supports": [
+        "6.4",
+        "8.17"
+      ]
+    },
+    "marking": {
+      "ready": false
+    },
+    "vehicle_disability_sign": {
+      "ready": false
+    },
+    "errors": {}
+  },
+  "idempotent_create": true,
+  "analysis_ran": true,
+  "both_photos_analyzed_with_scoped_boxes": true,
+  "synthetic_ocr_requires_review": true,
+  "different_photo_numbers_block_package": true,
+  "repeat_export_originals_and_hashes": true,
+  "single_history_record": true,
+  "cross_session_isolation": true,
+  "geocoding_requires_consent": true,
+  "synthetic_record_deleted": true,
+  "duration_seconds": 1.1,
+  "scope": "Local API integration with synthetic fixtures; not street CV validation or human completion-time measurement."
+}

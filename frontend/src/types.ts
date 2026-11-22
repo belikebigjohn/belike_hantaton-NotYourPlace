@@ -1,0 +1,10 @@
+export type Screen='home'|'scene'|'plate'|'review'|'location'|'document'|'send'|'history'|'detail';
+export type Kind='scene'|'plate';
+export interface PlateCandidate {value:string;raw_value?:string;confidence:number|null;detection_confidence?:number;bbox:number[]|null;photo_id?:Kind;format_matches?:boolean}
+export interface PlateResult {value:string;confidence:number|null;bbox:number[]|null;needs_review:boolean;candidates:PlateCandidate[];photo_id?:Kind}
+export interface PlateReview {scene_value:string;plate_value:string;confirmed:boolean;selected_candidates?:Partial<Record<Kind,PlateCandidate>>}
+export interface PhotoQuality {width:number;height:number;blur_score?:number;brightness?:number;warnings:string[];mime_type?:string}
+export interface Analysis {plate:PlateResult;plates_by_photo?:Partial<Record<Kind,PlateResult>>;plate_comparison?:{status:'match'|'mismatch'|'needs_review';scene_value:string;plate_value:string};plate_review?:PlateReview;signs:{class_code:string;confidence:number;bbox:number[];photo_id:string}[];parking_accessibility_evidence:'detected'|'not_detected'|'unknown';explanations:string[];model_versions:Record<string,unknown>;quality?:Partial<Record<Kind,PhotoQuality>>;additional_evidence?:{marking:string;vehicle_disability_sign:string}}
+export interface Report {id:string;status:'draft'|'prepared'|'exported'|'sent';created_at:string;updated_at:string;plate:string;address:string;observed_at:string;latitude:number|null;longitude:number|null;accuracy:number|null;location_source:string;designation:string;observation:string;applicant_name:string;applicant_address:string;applicant_email:string;recipient:string;statement:string;confirmed:boolean;photos:Record<string,unknown>;analysis:Analysis|null}
+export type Draft=Omit<Report,'id'|'created_at'|'updated_at'> & {id?:string;created_at?:string;updated_at?:string;creation_key?:string};
+export interface LocalDraft {data:Draft;screen:Screen;files:Partial<Record<Kind,Blob>>;sources?:Partial<Record<Kind,'camera'|'upload'>>;capturedAt?:Partial<Record<Kind,string>>}
