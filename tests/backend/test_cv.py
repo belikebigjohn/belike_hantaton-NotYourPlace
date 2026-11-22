@@ -196,3 +196,17 @@ def test_geometry_and_nested_boxes_are_filtered_before_ocr():
     result,_=engine._read_plate(image_with_details(),"scene")
     assert result["value"] == "А123ВС77"
     assert crops == [(45,200,3)]
+
+
+def test_whole_plate_crop_can_be_read_when_scene_detector_misses_it():
+    engine=CVEngine()
+    engine.alpr=SimpleNamespace(detector=SimpleNamespace(predict=lambda image: []),ocr=SimpleNamespace(predict=lambda image: SimpleNamespace(text='A123BC77',confidence=.99)))
+    image=np.full((50,240,3),180,dtype=np.uint8)
+    result,complete=engine._read_plate(image,'plate')
+    assert complete and result['value']=='А123ВС77'
+    assert result['needs_review'] is True
+    assert result['candidates'][0]['detection_confidence'] is None
+    assert result['candidates'][0]['source']=='whole_plate_crop'
+    assert engine._read_plate(image,'scene')[0]['value']==''
+    # Ordinary 16:9 photos cannot enter this fallback.
+    assert engine._read_plate(np.zeros((720,1280,3),dtype=np.uint8),'plate')[0]['value']==''

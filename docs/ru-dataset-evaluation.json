@@ -1,0 +1,19 @@
+{
+  "source": "https://nomeroff.net.ua/datasets/autoriaNumberplateOcrRu-2021-09-01.zip",
+  "attribution": "AUTO.RIA Numberplate OCR RU Dataset; data provided by Habr.com community; CC BY 4.0",
+  "split": "test",
+  "seed": 20261122,
+  "samples": 60,
+  "exact_matches": {
+    "direct_ocr": 60,
+    "detector_only_pipeline": 49,
+    "closeup_pipeline": 60
+  },
+  "accuracy": {
+    "direct_ocr": 1.0,
+    "detector_only_pipeline": 0.8167,
+    "closeup_pipeline": 1.0
+  },
+  "pipeline_errors": [],
+  "limits": "Published model and its upstream test crops, used to diagnose and verify the crop fallback; not an independent street-scene or detector benchmark. No training or test-label corrections were used."
+}

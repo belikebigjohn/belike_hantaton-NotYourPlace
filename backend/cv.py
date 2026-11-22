@@ -166,6 +166,7 @@ class CVEngine:
         """Independent inference result; every box stays in its source image."""
         candidates = []
         complete = False
+        crop_fallback = False
         if self.alpr is not None:
             try:
                 for item in self._plate_predictions(image):
@@ -187,9 +188,28 @@ class CVEngine:
             except Exception:
                 # Keep partial results visible but never use them for confident comparison.
                 complete = False
+            # A supplied crop can already be the whole plate. The detector was
+            # trained on scenes and may miss such tightly cropped inputs. Read
+            # it directly only on the dedicated close-up input, with a plate-like
+            # aspect ratio; never apply whole-scene OCR or invent a detection score.
+            image_h, image_w = image.shape[:2]
+            if (photo_id == "plate" and complete and hasattr(self.alpr, "ocr")
+                    and not any(candidate["format_matches"] for candidate in candidates)
+                    and image_h >= 20 and 2.5 <= image_w / image_h <= 6.5):
+                try:
+                    reading = self.alpr.ocr.predict(image)
+                    value = normalize_plate(reading.text) if reading else ""
+                    if RU_PATTERN.fullmatch(value):
+                        candidates.append({"value": value, "raw_value": reading.text,
+                            "confidence": model_score(reading.confidence), "detection_confidence": None,
+                            "bbox": [0,0,image_w,image_h], "photo_id": photo_id,
+                            "format_matches": True, "source": "whole_plate_crop"})
+                        crop_fallback = True
+                except Exception:
+                    complete = False
         candidates.sort(key=lambda item: (item["format_matches"], item["confidence"] or 0), reverse=True)
         best = candidates[0] if candidates else {"value": "", "confidence": None, "bbox": None}
-        needs_review = not complete or not best["value"] or not RU_PATTERN.fullmatch(best["value"]) or (best["confidence"] or 0) < .9 or len(candidates) != 1
+        needs_review = crop_fallback or not complete or not best["value"] or not RU_PATTERN.fullmatch(best["value"]) or (best["confidence"] or 0) < .9 or len(candidates) != 1
         return {"value": best["value"], "confidence": best["confidence"], "bbox": best["bbox"], "needs_review": bool(needs_review), "candidates": candidates, "photo_id": photo_id}, complete
 
     def _plate_predictions(self, image):
