@@ -1,4 +1,5 @@
 import type { Analysis, Draft, Kind, Report } from './types';
+export interface CameraPreview {width:number;height:number;quality:{warnings:string[]};boxes:{label:string;kind:'plate'|'sign';bbox:number[]}[];plate_available:boolean;sign_available:boolean|null}
 async function request<T>(path:string,init:RequestInit={}):Promise<T>{
   const controller=new AbortController(); const timer=setTimeout(()=>controller.abort(),90000);
   try {const response=await fetch(`/api${path}`,{...init,credentials:'include',signal:init.signal||controller.signal});
@@ -11,6 +12,7 @@ function editable(data:Partial<Draft>){const {id,created_at,updated_at,photos,cr
 let sessionBootstrap:Promise<unknown>|null=null;
 function ensureSession(){if(!sessionBootstrap)sessionBootstrap=request('/health').catch(error=>{sessionBootstrap=null;throw error;});return sessionBootstrap;}
 export const api={
+ cameraPreview:async(kind:Kind,frame:Blob,signal?:AbortSignal):Promise<CameraPreview>=>{const body=new FormData();body.append('kind',kind);body.append('frame',frame,'preview.jpg');const response=await fetch('/api/camera-preview',{method:'POST',body,credentials:'include',signal});if(!response.ok)throw new Error('Подсказки камеры временно недоступны.');return response.json();},
  mapConfig:()=>request<{yandex_js_key:string}>('/map-config'),
  list:()=>request<Report[]>('/reports'), get:(id:string)=>request<Report>(`/reports/${encodeURIComponent(id)}`),
  create:async(data:Draft)=>{await ensureSession();const init=json('POST',editable(data));if(data.creation_key)init.headers={...init.headers,'Idempotency-Key':data.creation_key};return request<Report>('/reports',init);}, update:(id:string,data:Partial<Draft>)=>request<Report>(`/reports/${encodeURIComponent(id)}`,json('PATCH',editable(data))),

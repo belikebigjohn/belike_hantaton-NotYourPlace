@@ -42,6 +42,17 @@ def test_bad_upload_and_dark_quality():
     assert len(quality["warnings"]) >= 2
 
 
+def test_camera_preview_reports_quality_without_inventing_detections(monkeypatch):
+    engine = CVEngine()
+    monkeypatch.setenv("CV_DISABLED", "1")
+    image = np.zeros((480, 640, 3), dtype=np.uint8)
+    preview = engine.preview(image, "scene")
+    assert preview["boxes"] == []
+    assert preview["plate_available"] is False
+    assert preview["sign_available"] is False
+    assert any("тёмный" in warning for warning in preview["quality"]["warnings"])
+
+
 @pytest.mark.parametrize("score,expected_review", [(0.97, False), (0.61, True)])
 def test_model_score_controls_review_without_regexp_confidence(score, expected_review):
     engine = CVEngine()

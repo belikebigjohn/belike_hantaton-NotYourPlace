@@ -94,6 +94,20 @@ def test_foreign_origin_rejected(clients):
     assert response.status_code == 403
 
 
+def test_camera_preview_is_advisory(picture, monkeypatch):
+    import asyncio
+    import httpx
+    monkeypatch.setattr(main.engine, "preview", lambda image, kind: {"width": image.shape[1], "height": image.shape[0], "boxes": [], "quality": {"warnings": []}, "plate_available": False, "sign_available": False})
+    async def exercise():
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=main.app), base_url="http://testserver") as client:
+            response = await client.post("/api/camera-preview", data={"kind": "scene"}, files={"frame": ("frame.png", picture, "image/png")})
+            assert response.status_code == 200
+            assert response.json()["plate_available"] is False
+            invalid = await client.post("/api/camera-preview", data={"kind": "scene"}, files={"frame": ("bad.jpg", b"not an image", "image/jpeg")})
+            assert invalid.status_code == 422
+    asyncio.run(exercise())
+
+
 def test_geocoder_failure_manual_fallback(clients, monkeypatch):
     first, _ = clients
     monkeypatch.setenv("GEOCODER_ENABLED", "0")

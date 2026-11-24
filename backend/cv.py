@@ -310,6 +310,37 @@ class CVEngine:
                 results.append(SimpleNamespace(detection=SimpleNamespace(bounding_box=SimpleNamespace(x1=left,y1=top,x2=right,y2=bottom),confidence=None),ocr=reads[0],source="small_plate_recovery"))
         return results
 
+    def preview(self, image: np.ndarray, kind: str) -> dict:
+        """One reduced camera frame; advisory detections, never saved as evidence."""
+        self.load()
+        height, width = image.shape[:2]
+        quality = image_quality(image)
+        boxes = []
+        with self.lock:
+            if self.alpr is not None:
+                try:
+                    plate, _ = self._read_plate(image, kind, recover=False)
+                    for candidate in plate["candidates"][:3]:
+                        bbox = candidate.get("bbox")
+                        if bbox and len(bbox) == 4:
+                            boxes.append({"label": "Номер", "bbox": bbox, "kind": "plate"})
+                except Exception:
+                    pass
+            if kind == "scene" and self.sign_model is not None:
+                try:
+                    result = self.sign_model.predict(image, conf=.35, verbose=False, device="cpu", imgsz=640)[0]
+                    for box in result.boxes:
+                        code = str(self.sign_labels.get(int(box.cls.item()), ""))
+                        if code not in ("6.4", "8.17"):
+                            continue
+                        x1, y1, x2, y2 = box.xyxy[0].tolist()
+                        boxes.append({"label": "Парковка" if code == "6.4" else "Инвалиды", "bbox": [x1, y1, x2-x1, y2-y1], "kind": "sign"})
+                except Exception:
+                    pass
+        return {"width": width, "height": height, "quality": quality, "boxes": boxes,
+                "plate_available": self.alpr is not None,
+                "sign_available": self.sign_model is not None if kind == "scene" else None}
+
     def analyze(self, scene: np.ndarray, plate: np.ndarray) -> dict:
         self.load()
         started = time.perf_counter()

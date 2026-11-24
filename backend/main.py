@@ -169,6 +169,19 @@ async def analyze(scene_photo: UploadFile = File(...), plate_photo: UploadFile =
     return result
 
 
+@app.post("/api/camera-preview")
+async def camera_preview(kind: Literal["scene", "plate"] = Form(...), frame: UploadFile = File(...)):
+    import asyncio
+    data = await frame.read(2 * 1024 * 1024 + 1)
+    if len(data) > 2 * 1024 * 1024:
+        raise HTTPException(413, "Кадр для подсказок слишком большой.")
+    try:
+        image, _ = decode_image(data)
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+    return await asyncio.to_thread(engine.preview, image, kind)
+
+
 @app.post("/api/reports", status_code=201)
 def create_report(request: Request, payload: ReportInput):
     if payload.status != "draft":
