@@ -16,11 +16,11 @@ if ! command -v python3.14 >/dev/null 2>&1; then
   exit 1
 fi
 if [ -z "${TEST_PROXY_USER:-}" ]; then
-  read -r -p 'Test site username: ' TEST_PROXY_USER
+  TEST_PROXY_USER=test
 fi
 if [ -z "${TEST_PROXY_PASSWORD:-}" ]; then
-  read -r -s -p 'Test site password (16+ characters): ' TEST_PROXY_PASSWORD
-  echo
+  TEST_PROXY_PASSWORD="$(python3.14 -c 'import secrets; print(secrets.token_urlsafe(24))')"
 fi
 export TEST_PROXY_USER TEST_PROXY_PASSWORD
+printf '\nТестовый сайт запросит логин и пароль.\nЛогин: %s\nПароль: %s\n\n' "$TEST_PROXY_USER" "$TEST_PROXY_PASSWORD"
 exec python3.14 scripts/keen_proxy.py
