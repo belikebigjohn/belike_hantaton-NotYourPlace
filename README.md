@@ -1,6 +1,6 @@
 # ЧужоеМесто
 
-Тестовый запуск на Mac Mini через отдельный прокси и KeenDNS: [docs/MAC_TEST_SERVER.md](docs/MAC_TEST_SERVER.md).
+Тестовый запуск на Mac Mini одной командой: `bash scripts/start-site-mac.sh`. Схема и проверки: [docs/MAC_TEST_SERVER.md](docs/MAC_TEST_SERVER.md).
 
 ## Отправка изменений в два репозитория
 
