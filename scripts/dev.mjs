@@ -3,11 +3,11 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const windows = process.platform === 'win32';
-const python = resolve(windows ? '.venv/Scripts/python.exe' : '.venv/bin/python');
 const production = process.argv.includes('--production');
 if (existsSync('.env')) process.loadEnvFile('.env');
+const python = resolve(process.env.APP_PYTHON || (windows ? '.venv/Scripts/python.exe' : '.venv/bin/python'));
 if (!existsSync(python)) {
-  console.error('Сначала создайте окружение .venv и установите backend/requirements.txt — команды в README.md.');
+  console.error(`Python не найден: ${python}. Создайте окружение и установите backend/requirements.txt — команды в README.md.`);
   process.exit(1);
 }
 if (production && !existsSync('frontend/dist/index.html')) {
