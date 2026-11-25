@@ -31,7 +31,7 @@ lsof -nP -iTCP:8766 -sTCP:LISTEN
 .venv/bin/python -m backend.verify_models
 ```
 
-`setup_models.py` проверяет размер и SHA-256 весов и загрузку моделей. Установите `COOKIE_SECURE=1` в локальном `.env` для HTTPS тестового адреса. Сам `.env` не отправляйте в Git.
+`setup_models.py` проверяет размер и SHA-256 весов и загрузку моделей. Для текущей цепочки оставьте `COOKIE_SECURE=0`: приложение автоматически помечает cookie как Secure при запросе через HTTPS proxy, сохраняя локальный HTTP-доступ. Сам `.env` не отправляйте в Git. Настройка бота — в [MAX_SETUP.md](MAX_SETUP.md).
 
 ## Два отдельных терминала
 
