@@ -12,7 +12,7 @@ import s from './App.module.css';
 import DisplaySettings from './DisplaySettings';
 import {readDisplayPreferences,saveDisplayPreferences} from './displayPreferences';
 const warning='Указывайте только достоверные сведения. Расходы на проверку заведомо ложного обращения могут взыскать через суд (ч. 2 ст. 16 закона № 59-ФЗ).';
-const submissionUrl='https://госавтоинспекция.рф/request_main';
+const authorGitHubUrl='https://github.com/belikebigjohn';
 const blank=():Draft=>({creation_key:crypto.randomUUID(),status:'draft',plate:'',address:'',observed_at:new Date().toISOString(),latitude:null,longitude:null,accuracy:null,location_source:'',designation:'',observation:'',applicant_name:'',applicant_address:'',applicant_email:'',recipient:'',statement:'',confirmed:false,photos:{},analysis:null});
 const format=(date?:string)=>date?new Intl.DateTimeFormat('ru-RU',{dateStyle:'medium',timeStyle:'short'}).format(new Date(date)):'—';
 const status=(value:string)=>({draft:'Черновик',prepared:'Пакет готов',exported:'Пакет получен',sent:'Отправлено вручную'}[value]||value);
@@ -94,8 +94,8 @@ export default function App(){
   {getMessengerEnvironment()==='max'&&<button className={s.primary} onClick={sendToMax}><span className={s.actionContent}><span className={s.actionLeading} aria-hidden="true"><SendHorizontal size={22}/></span><span className={s.actionLabel}>Отправить архив в MAX</span><span className={s.actionTrailing} aria-hidden="true"></span></span></button>}
   <button className={getMessengerEnvironment()==='max'?s.secondary:s.primary} onClick={download}><span className={s.actionContent}><span className={s.actionLeading} aria-hidden="true"><Download size={22}/></span><span className={s.actionLabel}>Скачать архив</span><span className={s.actionTrailing} aria-hidden="true"></span></span></button>
  <div className={s.packageContents}><span><FileText size={18}/> Документ Word и текст</span><span><ImageIcon size={18}/> Две фотографии</span></div>
-  <a className={s.secondary} href={submissionUrl} target="_blank" rel="noopener noreferrer"><span className={s.actionContent}><span className={s.actionLeading} aria-hidden="true"><ExternalLink size={20}/></span><span className={s.actionLabel}>Открыть сайт Госавтоинспекции</span><span className={s.actionTrailing} aria-hidden="true"></span></span></a>
-  <p className={s.hint}>Обращение подаётся на сайте Госавтоинспекции. Пакет не отправляется автоматически.</p>
+  <a className={s.secondary} href={authorGitHubUrl} target="_blank" rel="noopener noreferrer"><span className={s.actionContent}><span className={s.actionLeading} aria-hidden="true"><ExternalLink size={20}/></span><span className={s.actionLabel}>Открыть GitHub автора</span><span className={s.actionTrailing} aria-hidden="true"></span></span></a>
+  <p className={s.hint}>Профиль автора проекта. Обращение не отправляется автоматически.</p>
  <button className={s.secondary} onClick={()=>setScreen('home')}><span className={s.actionContent}><span className={s.actionLeading} aria-hidden="true"></span><span className={s.actionLabel}>В главное меню</span><span className={s.actionTrailing} aria-hidden="true"><ArrowRight size={20}/></span></span></button>
  <button className={s.historyLink} onClick={history}>Перейти в историю <ChevronRight size={19}/></button>
  </>}
