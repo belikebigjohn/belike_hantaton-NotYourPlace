@@ -5,12 +5,35 @@ import hashlib
 import hmac
 import json
 import os
+import ssl
 import time
 from urllib.parse import parse_qsl, urlparse
 
+import certifi
 import httpx
 
 API = "https://platform-api2.max.ru"
+
+
+def _client(timeout: float) -> httpx.AsyncClient:
+    # Keep the extra trust roots scoped to outbound MAX requests.
+    ca_bundle = os.getenv("MAX_CA_BUNDLE")
+    verify = ssl.create_default_context(cafile=certifi.where()) if ca_bundle else True
+    if ca_bundle:
+        verify.load_verify_locations(cafile=ca_bundle)
+    return httpx.AsyncClient(timeout=timeout, verify=verify)
+
+
+def _upload_host_allowed(url: str) -> bool:
+    parsed = urlparse(url)
+    host = parsed.hostname or ""
+    return (
+        parsed.scheme == "https"
+        and parsed.port in (None, 443)
+        and not parsed.username
+        and not parsed.password
+        and (host == "platform-api2.max.ru" or host.endswith(".okcdn.ru") or host.endswith(".oneme.ru"))
+    )
 
 
 def validate_init_data(raw: str) -> int:
@@ -46,7 +69,7 @@ def _headers() -> dict[str, str]:
 
 
 async def send_message(user_id: int, text: str, attachments: list | None = None) -> None:
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with _client(30) as client:
         response = await client.post(f"{API}/messages", params={"user_id": user_id}, headers=_headers(), json={"text": text, "attachments": attachments or []})
         response.raise_for_status()
 
@@ -60,17 +83,23 @@ async def send_welcome(user_id: int) -> None:
 
 async def send_package(user_id: int, package: bytes, report_id: str) -> None:
     filename = f"chuzhoe-mesto-{report_id[:8]}.zip"
-    async with httpx.AsyncClient(timeout=90) as client:
+    async with _client(90) as client:
         response = await client.post(f"{API}/uploads", params={"type": "file"}, headers=_headers())
         response.raise_for_status()
         upload = response.json()
         upload_url = upload["url"]
-        parsed = urlparse(upload_url)
-        if parsed.scheme != "https" or parsed.hostname not in {"fu.oneme.ru", "platform-api2.max.ru"}:
+        if not _upload_host_allowed(upload_url):
             raise ValueError("Invalid MAX upload URL")
         response = await client.post(upload_url, files={"data": (filename, package, "application/zip")})
         response.raise_for_status()
-        token = response.json().get("token") or upload.get("token")
+        # MAX can return XML (<retval>1</retval>) after multipart upload.
+        # The attachment token normally comes from POST /uploads.
+        try:
+            uploaded = response.json()
+        except ValueError:
+            uploaded = {}
+        token = uploaded.get("token") if isinstance(uploaded, dict) else None
+        token = token or upload.get("token")
         if not token:
             raise ValueError("MAX file token missing")
         body = {"text": "Пакет обращения готов. Сохраните архив и подайте обращение самостоятельно через официальный сервис.", "attachments": [{"type": "file", "payload": {"token": token}}]}

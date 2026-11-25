@@ -54,4 +54,8 @@ async function main() {
   console.log('MAX: webhook подключён. Проверьте команду /start в чате бота.');
 }
 
-main().catch(error => { console.error(error.message); process.exitCode = 1; });
+main().catch(error => {
+  const code = error.cause?.code || error.code;
+  console.error(code ? `MAX: ${error.message} (${code})` : error.message);
+  process.exitCode = 1;
+});

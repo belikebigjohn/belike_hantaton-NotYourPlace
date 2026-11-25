@@ -44,6 +44,24 @@ npm start
 
 Настройки приложения задаются в локальном файле `.env` по образцу [.env.example](.env.example). Без токена MAX основной браузерный сценарий работает отдельно. Инструкции для оператора тестового сервера и бота вынесены в [запуск на Mac Mini](docs/MAC_TEST_SERVER.md) и [настройку MAX](docs/MAX_SETUP.md).
 
+### Тестовый сервер на Mac Mini
+
+На Mac Mini сайт, HTTP proxy и обработчик событий MAX работают в одной пользовательской службе macOS `launchd`. После установки служба продолжает работать при закрытом Terminal и запускается при следующем входе пользователя в macOS. Отдельный процесс бота запускать не нужно. Для остановки, обновления из GitHub и повторного запуска:
+
+```sh
+cd ~/apps/belike_hantaton-NotYourPlace
+bash scripts/site-service-mac.sh stop
+git switch main
+git pull --ff-only origin main
+export PATH="$HOME/tools/node-v22.23.5-darwin-x64/bin:$PATH"
+npm run build
+bash scripts/site-service-mac.sh start
+sleep 70
+bash scripts/site-service-mac.sh status
+```
+
+`status` должен показать ответы `/api/health` от `127.0.0.1:8000` и `192.168.2.32:8766`. После изменения `.env` достаточно `bash scripts/site-service-mac.sh restart`. Логи службы: `runtime-data/logs/site.out.log` и `runtime-data/logs/site.err.log`. Настройки и проверка вебхука MAX описаны в [инструкции для оператора](docs/MAX_SETUP.md).
+
 ## Проверка и ограничения
 
 ```sh

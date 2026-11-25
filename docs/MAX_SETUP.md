@@ -32,7 +32,33 @@ MAX_WEBHOOK_SECRET=случайная_строка_из_букв_цифр_деф
 
 Если сайт уже запущен, новый токен не попадёт в работающий процесс сам. При ручном запуске остановите **только процесс этого проекта** в его терминале (Ctrl+C). Если сайт работает под службой `launchd`, выполните `bash scripts/site-service-mac.sh restart`. Не останавливайте другие сервисы. Для текущей схемы с локальным HTTP и KeenDNS оставьте `COOKIE_SECURE=0`: приложение само ставит Secure-cookie для запросов, пришедших через HTTPS proxy.
 
-Обычный запуск после обновления кода:
+На Mac Mini MAX работает внутри той же службы `launchd`, что и сайт. Terminal можно закрыть. После изменения `.env` или кода перезапускайте службу, отдельный бот-процесс не нужен. Команды остановки, обновления из GitHub и повторного запуска есть в [README](../README.md#тестовый-сервер-на-mac-mini).
+
+## Сертификат API MAX на Mac Mini
+
+Если в логах `fetch failed`, а `curl https://platform-api2.max.ru/subscriptions` сообщает `SSL certificate problem: unable to get local issuer certificate`, токен ещё даже не проверялся: соединение прервано на проверке TLS. MAX требует доверять сертификату Минцифры. [Официальная документация MAX](https://dev.max.ru/docs-api) и [страница сертификатов Госуслуг](https://www.gosuslugi.ru/crt).
+
+Скрипт скачивает корневой и выпускающий сертификаты с государственного домена `gu-st.ru`, проверяет их имена, сроки и цепочку, затем сохраняет **только для этого проекта** в игнорируемую Git папку `runtime-data/certs`. Системное хранилище macOS он не меняет, проверку TLS не отключает.
+
+```sh
+cd ~/apps/belike_hantaton-NotYourPlace
+bash scripts/setup-max-trust-mac.sh
+bash scripts/site-service-mac.sh restart
+sleep 70
+bash scripts/site-service-mac.sh status
+tail -n 40 runtime-data/logs/site.err.log
+tail -n 40 runtime-data/logs/site.out.log
+```
+
+`setup-max-trust-mac.sh` ожидает `HTTP 401` от MAX без токена: это значит, что TLS прошёл и API ответил. После перезапуска в `site.out.log` должно быть `MAX: webhook подключён` или `MAX: webhook уже подключён`. Если подписка существовала со старым секретом, обновите её отдельной командой после перезапуска:
+
+```sh
+NODE_EXTRA_CA_CERTS="$PWD/runtime-data/certs/max-ca.pem" node scripts/ensure-max-webhook.mjs --refresh
+```
+
+Если сервер MAX вернёт другой код, сохраните строку ошибки из лога без токена. Не используйте `curl -k`, `NODE_TLS_REJECT_UNAUTHORIZED=0` или `verify=False`: они отключают проверку адресата, которому отправляется токен бота и архив.
+
+Для ручного запуска (когда служба остановлена):
 
 ```sh
 cd ~/apps/belike_hantaton-NotYourPlace
@@ -49,13 +75,7 @@ bash scripts/start-site-mac.sh
 
 MAX присылает события бота по webhook. `bash scripts/start-site-mac.sh` запускает backend с обработчиком MAX и, если заполнены все три переменные, проверяет подписку webhook. При отсутствии подписки на этот проект скрипт создаёт её для `https://test.agentsofcremlin.netcraze.pro/api/max/webhook` с событиями `bot_started` и `message_created`. Токен читается из `.env` и не выводится.
 
-Если бот уже подписан на **другой** адрес, скрипт не переключает его: нужно сначала понять, кто использует этого бота. При ошибке подключения сайт остаётся запущен, а терминал покажет, что MAX не готов. При смене `MAX_WEBHOOK_SECRET` перезапустите backend проекта и обновите существующую подписку командой:
-
-```sh
-cd ~/apps/belike_hantaton-NotYourPlace
-export PATH="$HOME/tools/node-v22.23.5-darwin-x64/bin:$PATH"
-node scripts/ensure-max-webhook.mjs --refresh
-```
+Если бот уже подписан на **другой** адрес, скрипт не переключает его: нужно сначала понять, кто использует этого бота. При ошибке подключения сайт остаётся запущен, а лог покажет, что MAX не готов. При смене `MAX_WEBHOOK_SECRET` перезапустите службу проекта и выполните команду `--refresh` из раздела о сертификате выше.
 
 Затем откройте чат бота в MAX и нажмите **Старт** или отправьте `/start`: должно прийти краткое приветствие с кнопкой «Открыть приложение». Проверьте отправку архива только на синтетических фото. Сообщение скрипта о наличии подписки не подтверждает доставку события через KeenDNS; её подтверждают ответ бота и журнал сервера.
 

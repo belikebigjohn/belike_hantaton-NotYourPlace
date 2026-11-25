@@ -3,6 +3,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 export PATH="$HOME/tools/node-v22.23.5-darwin-x64/bin:$PATH"
+if [ -f "$PWD/runtime-data/certs/max-ca.pem" ]; then
+  export MAX_CA_BUNDLE="$PWD/runtime-data/certs/max-ca.pem"
+  export NODE_EXTRA_CA_CERTS="$MAX_CA_BUNDLE"
+fi
 backend_pid=''
 proxy_pid=''
 
