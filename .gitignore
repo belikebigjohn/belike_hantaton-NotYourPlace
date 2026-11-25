@@ -2,6 +2,7 @@
 node_modules/
 tmp/
 .venv/
+.venv-cv/
 __pycache__/
 *.py[cod]
 .pytest_cache/

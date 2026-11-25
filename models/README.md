@@ -14,8 +14,10 @@ For macOS Monterey / Intel, use the Python 3.12 virtual environment from the rep
 
 ```sh
 cd ~/apps/belike_hantaton-NotYourPlace
-source .venv/bin/activate
+python3.12 -m venv .venv-cv
+source .venv-cv/bin/activate
 python -m pip install -r backend/requirements.txt
+python -m pip check
 python models/setup_models.py
 python -m backend.verify_models
 curl -fsS http://127.0.0.1:8000/api/health

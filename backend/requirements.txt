@@ -1,8 +1,14 @@
 fastapi==0.165.0
 uvicorn==0.54.0
 python-multipart==0.0.34
-opencv-python-headless==5.1.0.95
-numpy==2.5.5
+opencv-python-headless==5.1.0.95; sys_platform != "darwin"
+numpy==2.5.5; sys_platform != "darwin"
+# Monterey/Intel wheels require the NumPy 1.x ABI and OpenCV's macOS 12 build.
+numpy==1.26.4; sys_platform == "darwin"
+opencv-python-headless==4.10.0.84; sys_platform == "darwin"
+opencv-python==4.10.0.84; sys_platform == "darwin"
+torch==2.2.2; sys_platform == "darwin"
+torchvision==0.17.2; sys_platform == "darwin"
 fast-alpr[onnx]==0.4.0
 ultralytics==8.4.216
 python-docx==1.2.0

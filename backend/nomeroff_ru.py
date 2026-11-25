@@ -7,6 +7,10 @@ See models/NOMEROFF_LICENSE.txt. Training and Lightning are deliberately exclude
 from __future__ import annotations
 
 import json
+import hashlib
+import pickle
+import types
+from collections import OrderedDict
 from pathlib import Path
 
 import cv2
@@ -19,6 +23,45 @@ from torchvision.models import shufflenet_v2_x2_0
 
 class LabelMetadata:
     """Inert deserialization holder; never invokes Nomeroff checkpoint code."""
+
+
+def load_checkpoint(weights: Path):
+    """Read the pinned Nomeroff checkpoint on modern and legacy Intel macOS Torch."""
+    if hasattr(torch.serialization, "safe_globals"):
+        with torch.serialization.safe_globals([(LabelMetadata, "nomeroff_net.tools.ocr_tools.StrLabelConverter"), shufflenet_v2_x2_0]):
+            return torch.load(weights, map_location="cpu", weights_only=True)
+
+    # Torch 2.2 is the last Intel macOS build and lacks safe_globals. Its
+    # weights-only unpickler cannot allowlist the checkpoint's two metadata
+    # globals. Verify the exact pinned artifact, then restrict pickle GLOBALs.
+    expected = json.loads((Path(__file__).resolve().parents[1] / "models/checksums.reference.json").read_text(encoding="utf-8"))["nomeroff-ru.ckpt"]
+    digest = hashlib.sha256()
+    with weights.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    if digest.hexdigest() != expected:
+        raise RuntimeError("Nomeroff checkpoint checksum mismatch")
+
+    allowed = {
+        ("collections", "OrderedDict"): OrderedDict,
+        ("torch._utils", "_rebuild_tensor_v2"): torch._utils._rebuild_tensor_v2,
+        ("torch", "FloatStorage"): torch.FloatStorage,
+        ("torch", "LongStorage"): torch.LongStorage,
+        ("nomeroff_net.tools.ocr_tools", "StrLabelConverter"): LabelMetadata,
+        ("torchvision.models.shufflenetv2", "shufflenet_v2_x2_0"): shufflenet_v2_x2_0,
+    }
+
+    class RestrictedUnpickler(pickle.Unpickler):
+        def find_class(self, module, name):
+            try:
+                return allowed[(module, name)]
+            except KeyError as error:
+                raise pickle.UnpicklingError(f"Unsupported checkpoint global: {module}.{name}") from error
+
+    restricted = types.ModuleType("restricted_nomeroff_pickle")
+    restricted.Unpickler = RestrictedUnpickler
+    restricted.load = lambda handle, **kwargs: RestrictedUnpickler(handle, **kwargs).load()
+    return torch.load(weights, map_location="cpu", weights_only=False, pickle_module=restricted)
 
 
 class Recurrent(nn.Module):
@@ -60,10 +103,7 @@ class RussianOCRNet(nn.Module):
 class NomeroffRussianOCR(BaseOCR):
     def __init__(self, weights: Path, config_path: Path):
         self.config = json.loads(config_path.read_text(encoding="utf-8-sig"))
-        # Safe weights-only loader allowlists the inert metadata object and a
-        # torchvision architecture function; no arbitrary checkpoint imports.
-        with torch.serialization.safe_globals([(LabelMetadata, "nomeroff_net.tools.ocr_tools.StrLabelConverter"), shufflenet_v2_x2_0]):
-            checkpoint = torch.load(weights, map_location="cpu", weights_only=True)
+        checkpoint = load_checkpoint(weights)
         self.model = RussianOCRNet(self.config)
         self.model.load_state_dict(checkpoint["state_dict"], strict=True)
         self.model.eval()
