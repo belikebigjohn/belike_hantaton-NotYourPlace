@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import secrets
 import sqlite3
@@ -157,7 +158,8 @@ def write_report(report, owner):
 def health():
     models = engine.health()
     ready = models["plate_detector"] == "loaded" and models["plate_ocr"] == "loaded" and models["road_signs"]["status"] == "loaded"
-    return {"status": "ok" if ready else "degraded", "models": models, "demo_mode": os.getenv("DEMO_MODE", "0") == "1"}
+    max_configured = all(os.getenv(name) for name in ("MAX_BOT_TOKEN", "MAX_BOT_USERNAME", "MAX_WEBHOOK_SECRET"))
+    return {"status": "ok" if ready else "degraded", "models": models, "demo_mode": os.getenv("DEMO_MODE", "0") == "1", "integrations": {"max": {"configured": bool(max_configured)}}}
 
 
 @app.get("/api/map-config")
@@ -379,8 +381,9 @@ async def send_report_to_max(report_id: str, request: Request):
     package = build_export(report, photo_files)
     try:
         await send_package(request.state.max_user, package, report_id)
-    except (httpx.HTTPError, ValueError) as error:
-        raise HTTPException(502, "MAX не принял архив. Повторите отправку или скачайте его через браузер.") from error
+    except (httpx.HTTPError, ValueError, KeyError, TypeError) as error:
+        logging.exception("MAX archive delivery failed for report %s", report_id)
+        raise HTTPException(502, "Не удалось отправить архив в MAX. Попробуйте ещё раз или нажмите «Скачать архив».") from error
     if report["status"] != "sent":
         report["status"] = "exported"
     report["updated_at"] = utc_now()

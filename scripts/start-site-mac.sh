@@ -81,6 +81,10 @@ else
   fi
 fi
 
+if ! node scripts/ensure-max-webhook.mjs; then
+  echo 'MAX пока не подключён. Сайт и скачивание архива работают; исправьте настройки по docs/MAX_SETUP.md.' >&2
+fi
+
 echo 'Локальная цепочка 8000 → 8766 работает. Проверьте: https://test.agentsofcremlin.netcraze.pro/'
 echo 'Если этот скрипт запустил процессы, оставьте терминал открытым; Ctrl+C остановит только их.'
 if [ -z "$backend_pid" ] && [ -z "$proxy_pid" ]; then exit 0; fi
