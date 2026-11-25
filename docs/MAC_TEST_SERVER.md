@@ -2,6 +2,33 @@
 
 Схема остаётся прежней: KeenDNS HTTPS → Keenetic → `192.168.2.32:8766` (отдельный Python 3.14 HTTP proxy) → `127.0.0.1:8000` (Python 3.12 FastAPI). Не меняйте настройки роутера, KeenDNS, Happ и других сервисов. Не запускайте Uvicorn на `8766`.
 
+## Работа после закрытия Terminal
+
+Для постоянного запуска установите пользовательскую службу macOS `launchd`. Сначала остановите старый ручной запуск проекта через **Ctrl+C в его терминале**. Скрипт установки откажется создавать второй экземпляр, если порты `8000` или `8766` уже заняты. Затем:
+
+```sh
+cd ~/apps/belike_hantaton-NotYourPlace
+export PATH="$HOME/tools/node-v22.23.5-darwin-x64/bin:$PATH"
+git switch main
+git pull --ff-only origin main
+npm run build
+bash scripts/site-service-mac.sh install
+bash scripts/site-service-mac.sh status
+```
+
+После установки Terminal можно закрыть. `launchd` поддерживает процесс и запускает его при следующем входе пользователя в macOS. Во время установки пользователь должен быть вошедшим в графический сеанс Mac Mini (при необходимости войдите через VNC). При полном выходе пользователя из macOS служба остановится до следующего входа; запуск сразу после включения Mac без входа требует системного LaunchDaemon и здесь не настроен.
+
+После обновления кода или `.env`:
+
+```sh
+git pull --ff-only origin main
+npm run build
+bash scripts/site-service-mac.sh restart
+bash scripts/site-service-mac.sh status
+```
+
+Остановить службу вручную: `bash scripts/site-service-mac.sh stop`. Снова включить: `bash scripts/site-service-mac.sh start`. Логи: `runtime-data/logs/site.out.log` и `runtime-data/logs/site.err.log`. Служба запускает тот же `start-site-mac.sh`, включая проверку MAX, без дополнительных портов.
+
 ## Быстрый запуск одной командой
 
 ```sh

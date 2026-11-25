@@ -86,7 +86,11 @@ if ! node scripts/ensure-max-webhook.mjs; then
 fi
 
 echo 'Локальная цепочка 8000 → 8766 работает. Проверьте: https://test.agentsofcremlin.netcraze.pro/'
-echo 'Если этот скрипт запустил процессы, оставьте терминал открытым; Ctrl+C остановит только их.'
+if [ "${CHUZHOE_LAUNCHD:-}" = '1' ]; then
+  echo 'Сайт работает под launchd; закрытие Terminal его не остановит.'
+else
+  echo 'Ручной запуск: оставьте терминал открытым; Ctrl+C остановит только процессы этого запуска.'
+fi
 if [ -z "$backend_pid" ] && [ -z "$proxy_pid" ]; then exit 0; fi
 while true; do
   if [ -n "$backend_pid" ] && ! kill -0 "$backend_pid" 2>/dev/null; then
