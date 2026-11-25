@@ -1,5 +1,4 @@
 """In-memory checks for the fixed KeenDNS-to-application bridge."""
-import base64
 import io
 import unittest
 from email.message import Message
@@ -54,26 +53,18 @@ class FakeConnection:
 
 
 class KeenProxyTest(unittest.TestCase):
-    def test_requires_password_before_forwarding(self):
+    def test_forwards_body_and_cookie(self):
         proxy = handler()
-        with patch.dict("os.environ", {"TEST_PROXY_USER": "tester", "TEST_PROXY_PASSWORD": "a-long-test-password"}):
-            self.assertFalse(proxy._authorized())
-        self.assertIn(("status", 401), proxy.events)
-        self.assertIn(("WWW-Authenticate", 'Basic realm="ChuzhoeMesto test"'), proxy.events)
-
-    def test_forwards_body_and_cookie_without_exposing_basic_password(self):
-        proxy = handler()
-        proxy.headers["Authorization"] = "Basic " + base64.b64encode(b"tester:a-long-test-password").decode()
         proxy.headers["X-Forwarded-Proto"] = "http"
         upstream = FakeConnection()
-        with patch.dict("os.environ", {"TEST_PROXY_USER": "tester", "TEST_PROXY_PASSWORD": "a-long-test-password"}), patch.object(keen_proxy.http.client, "HTTPConnection", return_value=upstream):
+        with patch.object(keen_proxy.http.client, "HTTPConnection", return_value=upstream):
             proxy._forward()
         args, kwargs = upstream.request_args
         self.assertEqual(args, ("POST", "/api/analyze"))
         self.assertEqual(kwargs["body"], b"photo-bytes")
         self.assertEqual(kwargs["headers"]["X-Forwarded-Proto"], "https")
         self.assertEqual(kwargs["headers"]["X-Forwarded-For"], "192.168.2.1")
-        self.assertNotIn("Authorization", kwargs["headers"])
+        self.assertEqual(kwargs["headers"]["Host"], "127.0.0.1:8000")
         self.assertIn(("Set-Cookie", "session=abc; HttpOnly"), proxy.events)
         self.assertEqual(proxy.wfile.getvalue(), b"ok")
 

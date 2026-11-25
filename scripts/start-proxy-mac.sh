@@ -15,12 +15,4 @@ if ! command -v python3.14 >/dev/null 2>&1; then
   echo 'Python 3.14 was not found on PATH.' >&2
   exit 1
 fi
-if [ -z "${TEST_PROXY_USER:-}" ]; then
-  TEST_PROXY_USER=test
-fi
-if [ -z "${TEST_PROXY_PASSWORD:-}" ]; then
-  TEST_PROXY_PASSWORD="$(python3.14 -c 'import secrets; print(secrets.token_urlsafe(24))')"
-fi
-export TEST_PROXY_USER TEST_PROXY_PASSWORD
-printf '\nТестовый сайт запросит логин и пароль.\nЛогин: %s\nПароль: %s\n\n' "$TEST_PROXY_USER" "$TEST_PROXY_PASSWORD"
 exec python3.14 scripts/keen_proxy.py
