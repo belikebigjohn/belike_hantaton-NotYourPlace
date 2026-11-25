@@ -1,4 +1,11 @@
-export function getMessengerEnvironment(): 'max' | 'browser' {
-  const host=window as Window & {WebApp?:unknown;MAX?:unknown};
-  return host.MAX || (host.WebApp && /MAX/i.test(navigator.userAgent)) ? 'max' : 'browser';
+interface MaxHost extends Window {WebApp?:{initData?:string;ready?:()=>void;expand?:()=>void}}
+export function getMaxInitData():string {
+  if(typeof window==='undefined')return '';
+  const host=window as MaxHost;
+  const fromBridge=host.WebApp?.initData;
+  if(fromBridge)return fromBridge;
+  const fragment=new URLSearchParams(window.location.hash.slice(1));
+  return fragment.get('WebAppData')||'';
 }
+export function getMessengerEnvironment(): 'max' | 'browser' {return getMaxInitData()?'max':'browser';}
+export function readyMax():void {if(typeof window==='undefined')return;const host=window as MaxHost;host.WebApp?.ready?.();host.WebApp?.expand?.();}

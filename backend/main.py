@@ -22,6 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from backend.cv import decode_image, engine, normalize_plate, RU_PATTERN
 from backend.documents import build_export, statement_for
+from backend.max_integration import owner_for_user, send_package, send_welcome, validate_init_data
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = Path(os.getenv("DATA_DIR", ROOT / "runtime-data"))
@@ -29,7 +30,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 DATABASE = DATA_DIR / "reports.sqlite3"
 MAX_UPLOAD = 15 * 1024 * 1024
 COOKIE_NAME = "chuzhoe_session"
-ALLOWED_ORIGINS = set(os.getenv("ALLOWED_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:8000,http://localhost:8000").split(","))
+ALLOWED_ORIGINS = set(os.getenv("ALLOWED_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:8000,http://localhost:8000,https://test.agentsofcremlin.netcraze.pro").split(","))
 
 
 def utc_now():
@@ -75,10 +76,18 @@ async def session_and_security(request: Request, call_next):
     cookie = request.cookies.get(COOKIE_NAME)
     fresh = not cookie or len(cookie) < 40 or len(cookie) > 128
     cookie = secrets.token_urlsafe(32) if fresh else cookie
-    request.state.owner = hashlib.sha256(cookie.encode()).hexdigest()
+    request.state.max_user = None
+    init_data = request.headers.get("x-max-init-data")
+    if init_data:
+        try:
+            request.state.max_user = validate_init_data(init_data)
+        except ValueError:
+            return JSONResponse({"error": {"code": "invalid_max_identity", "message": "Сессия MAX истекла. Откройте приложение из чата ещё раз."}}, status_code=401)
+    request.state.owner = owner_for_user(request.state.max_user) if request.state.max_user else hashlib.sha256(cookie.encode()).hexdigest()
     response = await call_next(request)
     if fresh:
-        response.set_cookie(COOKIE_NAME, cookie, max_age=60 * 60 * 24 * 30, httponly=True, samesite="strict", secure=os.getenv("COOKIE_SECURE") == "1")
+        https_frontend = request.headers.get("x-forwarded-proto") == "https" or os.getenv("COOKIE_SECURE") == "1"
+        response.set_cookie(COOKIE_NAME, cookie, max_age=60 * 60 * 24 * 30, httponly=True, samesite="none" if https_frontend else "strict", secure=https_frontend)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer"
     if request.url.path.startswith("/api/"):
@@ -347,6 +356,53 @@ def export_report(report_id: str, request: Request):
     report["updated_at"] = utc_now()
     write_report(report, request.state.owner)
     return Response(package, media_type="application/zip", headers={"Content-Disposition": f'attachment; filename="chuzhoe-mesto-{report_id[:8]}.zip"'})
+
+
+@app.post("/api/reports/{report_id}/send-max")
+async def send_report_to_max(report_id: str, request: Request):
+    if not request.state.max_user:
+        raise HTTPException(403, "Откройте приложение из чата MAX, чтобы получить архив там.")
+    if not os.getenv("MAX_BOT_TOKEN"):
+        raise HTTPException(503, "Бот MAX ещё не настроен на сервере.")
+    report = read_report(report_id, request.state.owner)
+    ensure_ready(report)
+    with connection() as database:
+        rows = database.execute("SELECT path,metadata,active FROM photos WHERE report_id=? ORDER BY active DESC,id", (report_id,)).fetchall()
+    photo_files = []
+    for row in rows:
+        metadata = json.loads(row["metadata"])
+        if not row["active"]:
+            metadata["kind"] = f"previous-{metadata['kind']}-{metadata['id']}"
+        photo_files.append({**metadata, "path": row["path"]})
+    if not report["statement"]:
+        report["statement"] = statement_for(report)
+    package = build_export(report, photo_files)
+    try:
+        await send_package(request.state.max_user, package, report_id)
+    except (httpx.HTTPError, ValueError) as error:
+        raise HTTPException(502, "MAX не принял архив. Повторите отправку или скачайте его через браузер.") from error
+    if report["status"] != "sent":
+        report["status"] = "exported"
+    report["updated_at"] = utc_now()
+    write_report(report, request.state.owner)
+    return {"delivered": True}
+
+
+@app.post("/api/max/webhook")
+async def max_webhook(request: Request):
+    secret = os.getenv("MAX_WEBHOOK_SECRET", "")
+    token = os.getenv("MAX_BOT_TOKEN", "")
+    if not token or not secret or not secrets.compare_digest(request.headers.get("x-max-bot-api-secret", ""), secret):
+        raise HTTPException(403, "Webhook unavailable")
+    update = await request.json()
+    update_type = update.get("update_type")
+    user = update.get("user") if update_type == "bot_started" else (update.get("message") or {}).get("sender")
+    command = ((update.get("message") or {}).get("body") or {}).get("text", "").strip()
+    if update_type == "bot_started" or (update_type == "message_created" and command.startswith("/start")):
+        user_id = (user or {}).get("user_id")
+        if isinstance(user_id, int) and user_id > 0:
+            await send_welcome(user_id)
+    return {"ok": True}
 
 
 @app.delete("/api/reports/{report_id}")
