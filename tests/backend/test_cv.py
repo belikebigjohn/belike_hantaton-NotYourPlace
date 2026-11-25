@@ -31,6 +31,25 @@ def test_missing_models_and_no_detection_are_not_success(monkeypatch):
     assert result["plate"]["confidence"] is None
     assert result["plate"]["needs_review"]
     assert result["parking_accessibility_evidence"] == "unknown"
+    assert result["analysis_status"] == "partial_model_unavailable"
+    health = engine.health()
+    assert health["plate_detector"] == "disabled"
+    assert health["plate_ocr"] == "disabled"
+    assert health["road_signs"]["status"] == "disabled"
+
+
+def test_health_distinguishes_missing_artifacts_without_public_paths(monkeypatch, tmp_path):
+    import backend.cv as cv
+    monkeypatch.delenv("CV_DISABLED", raising=False)
+    monkeypatch.setattr(cv, "MODEL_DIR", tmp_path)
+    engine = CVEngine()
+    engine.load()
+    health = engine.health()
+    assert health["plate_detector"] == "missing"
+    assert health["plate_ocr"] == "missing"
+    assert health["road_signs"]["status"] == "missing"
+    assert "setup_models.py" in health["repair"]
+    assert str(tmp_path) not in str(health)
 
 
 def test_bad_upload_and_dark_quality():

@@ -146,7 +146,9 @@ def write_report(report, owner):
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "models": engine.health(), "demo_mode": os.getenv("DEMO_MODE", "0") == "1"}
+    models = engine.health()
+    ready = models["plate_detector"] == "loaded" and models["plate_ocr"] == "loaded" and models["road_signs"]["status"] == "loaded"
+    return {"status": "ok" if ready else "degraded", "models": models, "demo_mode": os.getenv("DEMO_MODE", "0") == "1"}
 
 
 @app.get("/api/map-config")

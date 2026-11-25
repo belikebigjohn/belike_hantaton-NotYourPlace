@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import io
 import math
+import logging
 import re
 import threading
 import time
@@ -15,6 +16,7 @@ import numpy as np
 from PIL import Image, UnidentifiedImageError
 
 ROOT = Path(__file__).resolve().parents[1]
+LOGGER = logging.getLogger(__name__)
 MODEL_DIR = Path(os.getenv("MODEL_DIR", ROOT / "models"))
 LATIN_TO_RU = str.maketrans("ABEKMHOPCTYX", "АВЕКМНОРСТУХ")
 RU_PATTERN = re.compile(r"^[АВЕКМНОРСТУХ]\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}$")
@@ -109,6 +111,7 @@ class CVEngine:
         self.sign_model = None
         self.sign_labels = {}
         self.errors = {}
+        self.model_status = {name: "missing" for name in ("plate_detector", "plate_ocr", "road_signs")}
         self.loaded = False
         self.lock = threading.Lock()
 
@@ -120,22 +123,30 @@ class CVEngine:
                 return
             if os.getenv("CV_DISABLED") == "1":
                 self.errors["disabled"] = "disabled by configuration"
+                self.model_status = {name: "disabled" for name in self.model_status}
                 self.loaded = True
                 return
+            detector = MODEL_DIR / "plate-detector/yolo-v9-t-384-license-plate-end2end/yolo-v9-t-384-license-plates-end2end.onnx"
+            ocr = MODEL_DIR / "nomeroff-ru.ckpt"
+            config = MODEL_DIR / "nomeroff-ru-config.json"
+            plate_files = {"plate_detector": (detector,), "plate_ocr": (ocr, config)}
+            missing = [name for name, paths in plate_files.items() if not all(path.is_file() for path in paths)]
             try:
+                if missing:
+                    raise FileNotFoundError("missing model files")
                 import open_image_models.detection.core.hub as detector_hub
                 from fast_alpr import ALPR
                 # No network downloads during user requests. setup_models.py owns downloads.
                 detector_hub.MODEL_CACHE_DIR = MODEL_DIR / "plate-detector"
-                detector = MODEL_DIR / "plate-detector/yolo-v9-t-384-license-plate-end2end/yolo-v9-t-384-license-plates-end2end.onnx"
-                ocr = MODEL_DIR / "nomeroff-ru.ckpt"
-                config = MODEL_DIR / "nomeroff-ru-config.json"
-                if not all(p.is_file() for p in (detector, ocr, config)):
-                    raise FileNotFoundError("Run python models/setup_models.py")
                 from backend.nomeroff_ru import NomeroffRussianOCR
                 self.alpr = ALPR(detector_conf_thresh=.3, detector_providers=["CPUExecutionProvider"], ocr=NomeroffRussianOCR(ocr, config))
+                self.model_status["plate_detector"] = "loaded"
+                self.model_status["plate_ocr"] = "loaded"
             except Exception as error:
+                LOGGER.exception("Plate recognition model initialization failed")
                 self.errors["plate"] = type(error).__name__
+                for name in plate_files:
+                    self.model_status[name] = "missing" if name in missing else "error"
             try:
                 sign_path = MODEL_DIR / "road_signs/weights.verified.onnx"
                 if not sign_path.exists():
@@ -154,13 +165,16 @@ class CVEngine:
                 for key, label in self.sign_labels.items():
                     if str(self.sign_model.names[int(key)]).replace(".", "") != str(label).replace(".", ""):
                         raise ValueError("Weights class order differs from label mapping")
+                self.model_status["road_signs"] = "loaded"
             except Exception as error:
+                LOGGER.exception("Road sign model initialization failed")
                 self.sign_model = None
                 self.errors["signs"] = type(error).__name__
+                self.model_status["road_signs"] = "missing" if isinstance(error, FileNotFoundError) else "error"
             self.loaded = True
 
     def health(self):
-        return {"opencv": cv2.__version__, "plate": {"ready": self.alpr is not None, "detector": "yolo-v9-t-384", "ocr": "nomeroff-ru-shufflenet-v3.3"}, "road_signs": {"ready": self.sign_model is not None, "classes": len(self.sign_labels), "supports": ["6.4", "8.17"] if self.sign_model else []}, "marking": {"ready": False}, "vehicle_disability_sign": {"ready": False}, "errors": self.errors}
+        return {"opencv": cv2.__version__, "plate_detector": self.model_status["plate_detector"], "plate_ocr": self.model_status["plate_ocr"], "plate": {"ready": self.alpr is not None, "detector": "yolo-v9-t-384", "ocr": "nomeroff-ru-shufflenet-v3.3"}, "road_signs": {"status": self.model_status["road_signs"], "ready": self.sign_model is not None, "classes": len(self.sign_labels), "supports": ["6.4", "8.17"] if self.sign_model else []}, "marking": {"ready": False}, "vehicle_disability_sign": {"ready": False}, "repair": "Run python models/setup_models.py, then python -m backend.verify_models when a model is missing or reports an error." if any(state != "loaded" for state in self.model_status.values()) else None}
 
     def _read_plate(self, image: np.ndarray, photo_id: str, recover: bool = True) -> tuple[dict, bool]:
         """Independent inference result; every box stays in its source image."""
@@ -383,7 +397,9 @@ class CVEngine:
         selected = close_plate if close_plate["value"] else scene_plate if scene_plate["value"] else close_plate
         combined = close_plate["candidates"] + scene_plate["candidates"]
         top_plate = {**selected, "candidates": combined, "needs_review": selected["needs_review"] or comparison["status"] != "match"}
-        return {"plate": top_plate, "plates_by_photo": plates_by_photo, "plate_comparison": comparison, "signs": signs, "parking_accessibility_evidence": evidence, "explanations": explanations, "model_versions": {"plate_detector": "yolo-v9-t-384-license-plate-end2end" if self.alpr else None, "plate_ocr": "nomeroff-ru-shufflenet-v3.3" if self.alpr else None, "road_signs": "DL-teammm-yolov8-146" if self.sign_model else None, "marking": None, "vehicle_disability_sign": None}, "elapsed_ms": round((time.perf_counter() - started) * 1000), "scope": "Only the supplied images; detection is not a legal finding."}
+        if self.alpr is None or self.sign_model is None:
+            explanations.insert(0, "Автоматическое распознавание частично недоступно. Проверьте номер и обозначение места вручную.")
+        return {"analysis_status": "complete" if self.alpr is not None and self.sign_model is not None else "partial_model_unavailable", "plate": top_plate, "plates_by_photo": plates_by_photo, "plate_comparison": comparison, "signs": signs, "parking_accessibility_evidence": evidence, "explanations": explanations, "model_versions": {"plate_detector": "yolo-v9-t-384-license-plate-end2end" if self.alpr else None, "plate_ocr": "nomeroff-ru-shufflenet-v3.3" if self.alpr else None, "road_signs": "DL-teammm-yolov8-146" if self.sign_model else None, "marking": None, "vehicle_disability_sign": None}, "elapsed_ms": round((time.perf_counter() - started) * 1000), "scope": "Only the supplied images; detection is not a legal finding."}
 
 
 engine = CVEngine()
