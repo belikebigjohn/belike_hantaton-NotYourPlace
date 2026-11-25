@@ -381,7 +381,7 @@ async def send_report_to_max(report_id: str, request: Request):
     package = build_export(report, photo_files)
     try:
         await send_package(request.state.max_user, package, report_id)
-    except (httpx.HTTPError, ValueError, KeyError, TypeError) as error:
+    except (httpx.HTTPError, ValueError, KeyError, TypeError, OSError) as error:
         logging.exception("MAX archive delivery failed for report %s", report_id)
         raise HTTPException(502, "Не удалось отправить архив в MAX. Попробуйте ещё раз или нажмите «Скачать архив».") from error
     if report["status"] != "sent":

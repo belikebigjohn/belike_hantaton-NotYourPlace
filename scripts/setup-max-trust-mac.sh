@@ -20,16 +20,30 @@ openssl x509 -in "$temp_dir/root.pem" -noout -subject | grep -q 'CN *= *Russian 
 openssl x509 -in "$temp_dir/sub.pem" -noout -subject | grep -q 'CN *= *Russian Trusted Sub CA'
 openssl verify -CAfile "$temp_dir/root.pem" "$temp_dir/sub.pem" >/dev/null
 
-cat "$temp_dir/root.pem" "$temp_dir/sub.pem" > "$temp_dir/max-ca.pem"
+{
+  cat "$temp_dir/root.pem"
+  printf '\n'
+  cat "$temp_dir/sub.pem"
+  printf '\n'
+} > "$temp_dir/max-ca.pem"
+# Check the complete bundle before replacing the previous file. A malformed
+# PEM must never be installed for the running backend and webhook helper.
+python3.14 - "$temp_dir/max-ca.pem" <<'PY'
+import ssl
+import sys
+
+context = ssl.create_default_context()
+context.load_verify_locations(cafile=sys.argv[1])
+PY
+
+status="$(curl -sS --cacert "$temp_dir/max-ca.pem" --max-time 15 \
+  -o /dev/null -w '%{http_code}' https://platform-api2.max.ru/subscriptions)"
+if [ "$status" != 401 ] && [ "$status" != 200 ]; then
+  echo "API MAX ответил HTTP $status. Прежний сертификат проекта не изменён." >&2
+  exit 1
+fi
 mkdir -p runtime-data/certs
 chmod 700 runtime-data/certs
 mv "$temp_dir/max-ca.pem" runtime-data/certs/max-ca.pem
 chmod 600 runtime-data/certs/max-ca.pem
-
-status="$(curl -sS --cacert runtime-data/certs/max-ca.pem --max-time 15 \
-  -o /dev/null -w '%{http_code}' https://platform-api2.max.ru/subscriptions)"
-if [ "$status" != 401 ] && [ "$status" != 200 ]; then
-  echo "TLS установлен, но API MAX ответил HTTP $status. Проверьте сеть." >&2
-  exit 1
-fi
 echo "TLS MAX проверен (HTTP $status без токена). Перезапустите службу: bash scripts/site-service-mac.sh restart"

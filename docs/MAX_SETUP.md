@@ -50,7 +50,7 @@ tail -n 40 runtime-data/logs/site.err.log
 tail -n 40 runtime-data/logs/site.out.log
 ```
 
-`setup-max-trust-mac.sh` ожидает `HTTP 401` от MAX без токена: это значит, что TLS прошёл и API ответил. После перезапуска в `site.out.log` должно быть `MAX: webhook подключён` или `MAX: webhook уже подключён`. Если подписка существовала со старым секретом, обновите её отдельной командой после перезапуска:
+`setup-max-trust-mac.sh` ожидает `HTTP 401` от MAX без токена: это значит, что TLS прошёл и API ответил. Если ранее появился `curl: (77)` или `PEM routines::bad end line`, после обновления проекта запустите скрипт ещё раз: он теперь проверяет готовый PEM до замены файла. После перезапуска в `site.out.log` должно быть `MAX: webhook подключён` или `MAX: webhook уже подключён`. Если подписка существовала со старым секретом, обновите её отдельной командой после перезапуска:
 
 ```sh
 NODE_EXTRA_CA_CERTS="$PWD/runtime-data/certs/max-ca.pem" node scripts/ensure-max-webhook.mjs --refresh
