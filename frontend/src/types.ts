@@ -1,4 +1,4 @@
-export type Screen='home'|'scene'|'plate'|'review'|'location'|'document'|'send'|'history'|'detail';
+export type Screen='home'|'scene'|'plate'|'review'|'location'|'document'|'send'|'history'|'detail'|'help';
 export type Kind='scene'|'plate';
 export interface PlateCandidate {value:string;raw_value?:string;confidence:number|null;detection_confidence?:number;bbox:number[]|null;photo_id?:Kind;format_matches?:boolean}
 export interface PlateResult {value:string;confidence:number|null;bbox:number[]|null;needs_review:boolean;candidates:PlateCandidate[];photo_id?:Kind}

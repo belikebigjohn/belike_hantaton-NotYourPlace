@@ -195,3 +195,18 @@
 @media(prefers-reduced-motion:reduce){.progress .progressFill,.displaySettings,.displaySettings[data-open=true]{transition:none;transform:none}}
 
 .logo img{display:block;width:100%;height:100%;object-fit:contain}
+
+/* Display settings and menu form one stable group on every screen. */
+.headerActions{display:flex;align-items:center;gap:6px;flex:0 0 auto;margin-left:auto}
+.header .progress{min-width:0;margin-inline:auto}
+
+/* Help reads as one article rather than another set of action cards. */
+.helpContent{max-width:640px;margin:0 auto;padding-bottom:24px}
+.helpSection{border-top:1px solid #53636a;padding:20px 0}
+.helpSection h2{margin:0 0 10px;font-size:19px;line-height:1.35}
+.helpSection p,.helpSection li{color:#d5dce0;font-size:14px;line-height:1.65}
+.helpSection p{margin:10px 0 0}
+.helpSection ol,.helpSection ul{margin:10px 0;padding-left:22px}
+.helpSection li+li{margin-top:8px}
+.helpFootnote{margin:8px 0 0;color:#c2cdd2;font-size:13px;line-height:1.6}
+.page:not([data-contrast=normal]) .helpSection{border-color:var(--vision-fg)}

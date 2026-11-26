@@ -1,1 +1,1 @@
-{"name":"ЧужоеМесто","short_name":"ЧужоеМесто","lang":"ru","start_url":"/","display":"standalone","background_color":"#171a2b","theme_color":"#171a2b","icons":[{"src":"/icon.png","sizes":"1254x1254","type":"image/png","purpose":"any"}]}
+{"name":"ЧужоеМесто","short_name":"ЧужоеМесто","lang":"ru","start_url":"/","display":"standalone","background_color":"#171a2b","theme_color":"#171a2b","icons":[{"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}]}
