@@ -8,4 +8,5 @@ export function getMaxInitData():string {
   return fragment.get('WebAppData')||'';
 }
 export function getMessengerEnvironment(): 'max' | 'browser' {return getMaxInitData()?'max':'browser';}
+export function isMaxContainer():boolean {return typeof window!=='undefined'&&Boolean((window as MaxHost).WebApp||getMaxInitData());}
 export function readyMax():void {if(typeof window==='undefined')return;const host=window as MaxHost;host.WebApp?.ready?.();host.WebApp?.expand?.();}
