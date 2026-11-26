@@ -10,7 +10,7 @@ interface Props {analysis:Analysis|null;urls:Partial<Record<Kind,string>>;onEdit
 export default function PlateVerification({analysis,urls,onEdit,onRetake}:Props){
  const review=reviewValues(analysis),comparison=reviewComparison(analysis);
  return <section className={s.plateVerification} aria-label="Сверка номера на двух фотографиях">
- <div className={s.verificationIntro}><h2>Один автомобиль на двух снимках</h2><p>Сверьте номер на общем плане и крупном фото. Они должны совпадать.</p></div>
+ <div className={s.verificationIntro}><h2>Номер на двух фото</h2></div>
  {(['scene','plate'] as Kind[]).map(kind=>{
   const raw=analysis?.plates_by_photo?.[kind],value=kind==='scene'?review.scene_value:review.plate_value,candidates=readableCandidates(analysis,kind),box=selectedPlateBox(analysis,kind);
   const boxes=[...(kind==='scene'?(analysis?.signs||[]).map((sign,index)=>({bbox:sign.bbox,label:sign.class_code==='6.4'?'Парковка':sign.class_code==='8.17'?'Инвалиды':sign.class_code,color:'#ffffff',dashed:true,key:`sign-${index}`})):[]),...(box?[{bbox:box,label:kind==='scene'?'Номер · общий план':'Номер · крупный план',color:plateColors[kind],key:`plate-${kind}`}]:[])];
