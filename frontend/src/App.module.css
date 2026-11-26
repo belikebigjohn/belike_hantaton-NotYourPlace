@@ -83,4 +83,14 @@
 .page:not([data-text-size=normal]) .factList>div{grid-template-columns:minmax(0,1fr);gap:4px}
 .page:not([data-text-size=normal]) .historyCard{align-items:flex-start}.page:not([data-text-size=normal]) .historyThumb{width:56px;height:64px}.page:not([data-text-size=normal]) .historyCard>svg{margin-top:12px}
 .page:not([data-text-size=normal]) .displaySettings{padding:16px}.page:not([data-text-size=normal]) .displaySettings fieldset{padding:10px}
+/* Warning actions remain usable when the contrast mode adds a visible border. */
+:is(.page:not([data-contrast=normal]),.page:not([data-text-size=normal])) .qualityHint>button{width:100%;min-width:0;min-height:48px;justify-content:center;padding:10px 14px;margin-top:12px;border-radius:12px;text-align:center;white-space:normal;overflow-wrap:anywhere}
+.qualityHint>button svg,.deleteButton svg{flex-shrink:0}
+.page:not([data-contrast=normal]) :is(.qualityHint,.warning,.signStatus,.comparison,.candidate,.successCard,.documentCard,.historyCard,.modal){border-color:var(--vision-fg)}
+.page:not([data-contrast=normal]) :is(.qualityHint>div,.warning,.qualityHint>div svg,.warning svg){color:var(--vision-fg)}
+.page:not([data-contrast=normal]) :is(.qualityHint>button,.deleteButton,.cameraLabels button){border-radius:12px;padding:10px 14px}
+.page:not([data-contrast=normal]) :is(.details,.statusRows,.cameraView,.reviewPhoto,.verificationPhoto,.historyThumb,.toast){background:var(--vision-bg)!important;color:var(--vision-fg)!important}
+.page:not([data-contrast=normal]) .toast{border-color:var(--vision-fg);box-shadow:none}.page:not([data-contrast=normal]) .toast>svg{color:var(--vision-fg)}.page:not([data-contrast=normal]) .toast>button{border-radius:10px;min-width:44px;min-height:44px}
+.page:not([data-text-size=normal]) .qualityHint>div strong{font-size:var(--read-size);line-height:var(--read-leading)}
+.page:not([data-text-size=normal]) .qualityHint>button{flex-wrap:wrap}
 @media(max-width:520px){.cameraFullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;min-height:0!important;max-height:none!important;aspect-ratio:auto!important;margin:0!important;border:0!important;border-radius:0!important;z-index:50;background:#0b1114}.cameraFullscreen .liveHint{bottom:calc(112px + env(safe-area-inset-bottom));font-size:15px;padding:13px 16px}.cameraControlsFullscreen{position:fixed!important;left:0;right:0;bottom:0;z-index:51;display:flex!important;justify-content:space-evenly;align-items:center;min-height:calc(104px + env(safe-area-inset-bottom));margin:0!important;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,#0b1114 35%)}.cameraClose{display:grid;place-items:center;position:absolute;top:calc(16px + env(safe-area-inset-top));right:16px;z-index:3;width:44px;height:44px;border:1px solid #fff8;border-radius:50%;background:#101827c9;color:#fff}.cameraFullscreen .cornerFrame{inset:14% 8% 23%}}
