@@ -68,4 +68,19 @@
 /* The live mobile camera takes the viewport; preview hints stay on the image. */
 .cameraClose{display:none}
 .demoNotice{margin:18px 2px 6px;color:#cbd3d8;font-size:12px;line-height:1.5;text-align:center}
+/* Display options must keep the same rhythm on every step. */
+.homeActions{display:flex;flex-direction:column;gap:12px}.homeActions .secondary{margin-top:0}.homeActions .historyLink{border-radius:14px}
+.page[data-hide-decorations=true] .homeActions{margin-top:24px}
+.page:not([data-contrast=normal]) .historyLink{border-radius:14px}
+.page:not([data-contrast=normal]) :is(.displaySettings fieldset,.candidateList,.statusRows,.details,.locationMap,.cameraView,.reviewPhoto,.verificationPhoto,.historyThumb){border-color:var(--vision-fg)}
+.page:not([data-contrast=normal]) :is(.intro,.rightNote,.privacy,.cameraPlaceholder,.cameraLabels,.captureSafety,.demoNotice,.empty,.coordinate,.packageContents,.detailStatus){color:var(--vision-fg)!important}
+.page:not([data-contrast=normal]) .sideSteps li>svg{color:var(--vision-fg);background:var(--vision-bg);border:2px solid var(--vision-fg)}
+.page:not([data-contrast=normal]) :is(.reviewPhoto>span,.photoTaken,.liveHint){color:#fff!important;background:#000!important}
+.page:not([data-contrast=normal]) :is(.reviewPhoto>button,.cameraClose){color:#fff!important;background:#000!important;border-color:#fff!important}
+.page:not([data-text-size=normal]) :is(.packageContents,.documentFacts,.historyCard strong,.historyCard span,.successCard strong,.documentTitle,.detailStatus,.factList>div,.cameraLabels>span,.photoTaken,.reviewPhoto>span,.signStatus strong,.platePhotoHeading h3,.rawReading strong,.comparison p){font-size:var(--read-size)!important;line-height:var(--read-leading)!important}
+.page:not([data-text-size=normal]) :is(.packageContents,.detailStatus){flex-wrap:wrap;justify-content:flex-start;gap:12px}
+.page:not([data-text-size=normal]) .cameraLabels{flex-wrap:wrap}.page:not([data-text-size=normal]) .cameraLabels>span{max-width:none;flex-basis:100%;order:-1}
+.page:not([data-text-size=normal]) .factList>div{grid-template-columns:minmax(0,1fr);gap:4px}
+.page:not([data-text-size=normal]) .historyCard{align-items:flex-start}.page:not([data-text-size=normal]) .historyThumb{width:56px;height:64px}.page:not([data-text-size=normal]) .historyCard>svg{margin-top:12px}
+.page:not([data-text-size=normal]) .displaySettings{padding:16px}.page:not([data-text-size=normal]) .displaySettings fieldset{padding:10px}
 @media(max-width:520px){.cameraFullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;min-height:0!important;max-height:none!important;aspect-ratio:auto!important;margin:0!important;border:0!important;border-radius:0!important;z-index:50;background:#0b1114}.cameraFullscreen .liveHint{bottom:calc(112px + env(safe-area-inset-bottom));font-size:15px;padding:13px 16px}.cameraControlsFullscreen{position:fixed!important;left:0;right:0;bottom:0;z-index:51;display:flex!important;justify-content:space-evenly;align-items:center;min-height:calc(104px + env(safe-area-inset-bottom));margin:0!important;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,#0b1114 35%)}.cameraClose{display:grid;place-items:center;position:absolute;top:calc(16px + env(safe-area-inset-top));right:16px;z-index:3;width:44px;height:44px;border:1px solid #fff8;border-radius:50%;background:#101827c9;color:#fff}.cameraFullscreen .cornerFrame{inset:14% 8% 23%}}
