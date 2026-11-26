@@ -174,7 +174,7 @@
 @keyframes settingsEnter{from{opacity:0;transform:translateY(-8px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
 
 /* Notices stay above the content and can be dismissed by button or swipe. */
-.toast{top:calc(12px + env(safe-area-inset-top));bottom:auto;touch-action:pan-y;animation:noticeEnter .25s cubic-bezier(.2,.8,.2,1) both}
+.toast{top:calc(12px + env(safe-area-inset-top));bottom:auto;touch-action:none;animation:noticeEnter .25s cubic-bezier(.2,.8,.2,1) both}
 .toast[data-leaving=true]{animation:noticeLeave .22s ease-in both;pointer-events:none}
 .toast>span{min-width:0;flex:1}
 @keyframes noticeEnter{from{opacity:0;transform:translate(-50%,-12px)}to{opacity:1;transform:translate(-50%,0)}}
@@ -200,13 +200,28 @@
 .headerActions{display:flex;align-items:center;gap:6px;flex:0 0 auto;margin-left:auto}
 .header .progress{min-width:0;margin-inline:auto}
 
-/* Help reads as one article rather than another set of action cards. */
+/* One disclosure pattern serves help, document fields and coordinate editing. */
+.disclosure{margin:16px 0;border:1px solid #53636a;border-radius:14px;background:#26363d;overflow:hidden}
+.disclosureHeading{margin:0;font-size:16px}
+.disclosureHeading button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:56px;padding:14px 16px;border:0;background:transparent;color:#f6f4f7;font-size:16px;font-weight:750;line-height:1.4;text-align:left}
+.disclosureHeading svg{flex-shrink:0;transition:transform .25s cubic-bezier(.16,1,.3,1)}
+.disclosure[data-open=true] .disclosureHeading svg{transform:rotate(90deg)}
+.disclosureBody{display:grid;grid-template-rows:0fr;opacity:0;visibility:hidden;transition:grid-template-rows .28s cubic-bezier(.16,1,.3,1),opacity .2s ease,visibility 0s linear .28s}
+.disclosure[data-open=true] .disclosureBody{grid-template-rows:1fr;opacity:1;visibility:visible;transition:grid-template-rows .28s cubic-bezier(.16,1,.3,1),opacity .2s ease,visibility 0s}
+.disclosureInner{min-height:0;overflow:hidden;padding-inline:16px}
+.disclosureInner>*:first-child{margin-top:0}
+.disclosureInner>*:last-child{margin-bottom:16px}
 .helpContent{max-width:640px;margin:0 auto;padding-bottom:24px}
-.helpSection{border-top:1px solid #53636a;padding:20px 0}
-.helpSection h2{margin:0 0 10px;font-size:19px;line-height:1.35}
-.helpSection p,.helpSection li{color:#d5dce0;font-size:14px;line-height:1.65}
-.helpSection p{margin:10px 0 0}
-.helpSection ol,.helpSection ul{margin:10px 0;padding-left:22px}
-.helpSection li+li{margin-top:8px}
-.helpFootnote{margin:8px 0 0;color:#c2cdd2;font-size:13px;line-height:1.6}
-.page:not([data-contrast=normal]) .helpSection{border-color:var(--vision-fg)}
+.helpTopic{margin:12px 0}
+.helpTopic p,.helpTopic li{color:#d5dce0;font-size:14px;line-height:1.65}
+.helpTopic ol,.helpTopic ul{margin:10px 0;padding-left:22px}
+.helpTopic li+li{margin-top:8px}
+.helpTopic a{text-decoration-thickness:1px;text-underline-offset:3px;color:#a9d6ff}
+.helpFootnote{margin:18px 2px 0;color:#c2cdd2;font-size:13px;line-height:1.6}
+.sendNavigation{display:flex;flex-direction:column;gap:14px;margin-top:18px;padding-bottom:8px}
+.sendNavigation .secondary{margin-top:0}
+.page:not([data-contrast=normal]) .disclosure{background:var(--vision-bg);border-color:var(--vision-fg)}
+.page:not([data-contrast=normal]) .disclosureHeading button{border:0!important}
+.page:not([data-contrast=normal]) .helpTopic a{color:var(--vision-link)!important;border:0!important;background:transparent!important;text-decoration:underline}
+@media(prefers-reduced-motion:reduce){.disclosureBody,.disclosure[data-open=true] .disclosureBody,.disclosureHeading svg{transition:none}}
+.page[data-animations=false],.page[data-animations=false] *, .page[data-animations=false] *::before,.page[data-animations=false] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}

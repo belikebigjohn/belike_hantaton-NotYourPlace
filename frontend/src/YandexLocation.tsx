@@ -4,6 +4,7 @@ import {api} from './api';
 import {loadYandex,validMapPoint,widgetUrl} from './yandexMap';
 import type {MapPoint,YandexMap,YandexMark,YandexSDK} from './yandexMap';
 import s from './App.module.css';
+import Disclosure from './Disclosure';
 interface Props {latitude:number|null;longitude:number|null;address:string;onPoint:(point:MapPoint,address?:string)=>void}
 export default function YandexLocation({latitude,longitude,address,onPoint}:Props){
  const [active,setActive]=useState(false),[key,setKey]=useState<string|null>(null),[message,setMessage]=useState(''),[ready,setReady]=useState(false);
@@ -30,12 +31,12 @@ export default function YandexLocation({latitude,longitude,address,onPoint}:Prop
  },[active,key]);
  async function findAddress(){if(!sdk.current||!address.trim())return;const token=++generation.current;setMessage('Ищем адрес…');try{const result=await sdk.current.geocode(address);if(token!==generation.current)return;const found=result.geoObjects.get(0);if(!found){setMessage('Адрес не найден. Уточните адрес или выберите точку.');return;}const coords=found.geometry.getCoordinates();mark.current?.geometry.setCoordinates(coords);if(mark.current&&!pinAdded.current){map.current?.geoObjects.add(mark.current);pinAdded.current=true;}callback.current(coords,found.getAddressLine());map.current?.setCenter(coords,17);setMessage('Проверьте положение метки.');}catch{if(token===generation.current)setMessage('Не удалось найти адрес. Попробуйте уточнить его.');}}
  return <section className={s.locationMap} aria-label="Место на Яндекс Карте"><h2><MapPin size={22}/>Место на карте</h2>
- {!active?<><p>Проверьте место, где стоит автомобиль.</p><button className={s.secondary} onClick={()=>setActive(true)}>Открыть Яндекс Карту</button><p className={s.mapPrivacy}>При открытии карты выбранные координаты передаются Яндексу. Фотографии и данные заявителя не передаются.</p></>:<>
+ {!active?<><p>Проверьте место, где стоит автомобиль.</p><button className={s.secondary} onClick={()=>setActive(true)}>Открыть Яндекс Карту</button></>:<>
  {key===null?<p role="status">Открываем карту…</p>:key?<div ref={host} className={s.mapCanvas} aria-label="Выбор точки на карте"/>:<iframe className={s.mapCanvas} src={widgetUrl(point)} title="Яндекс Карта места наблюдения" loading="lazy" referrerPolicy="strict-origin-when-cross-origin"/>}
  <p role="status">{key?message:point?'На карте отмечены указанные координаты. Проверьте положение метки.':'Откройте нужный район на карте и укажите адрес ниже. Координаты можно уточнить вручную.'}</p>
  {key&&<button className={s.secondary} disabled={!ready||!address.trim()} onClick={()=>void findAddress()}>Найти адрес на карте</button>}
  <a className={s.historyLink} href={point?`https://yandex.ru/maps/?pt=${point[1]},${point[0]}&z=17`:`https://yandex.ru/maps/?text=${encodeURIComponent(address||'Екатеринбург')}`} target="_blank" rel="noopener noreferrer">Открыть в Яндекс Картах <ExternalLink size={18}/></a>
- <details><summary>Уточнить координаты</summary><label className={s.field}>Широта<input inputMode="decimal" value={lat} onChange={event=>setLat(event.target.value)}/></label><label className={s.field}>Долгота<input inputMode="decimal" value={lon} onChange={event=>setLon(event.target.value)}/></label><button className={s.secondary} onClick={()=>{const chosen=validMapPoint(lat.replace(',','.'),lon.replace(',','.'));if(!chosen){setMessage('Укажите корректные широту и долготу.');return;}void selectPoint(chosen);}}>Показать точку</button>{!key&&message&&<p role="status">{message}</p>}</details>
+ <Disclosure title="Уточнить координаты"><label className={s.field}>Широта<input inputMode="decimal" value={lat} onChange={event=>setLat(event.target.value)}/></label><label className={s.field}>Долгота<input inputMode="decimal" value={lon} onChange={event=>setLon(event.target.value)}/></label><button className={s.secondary} onClick={()=>{const chosen=validMapPoint(lat.replace(',','.'),lon.replace(',','.'));if(!chosen){setMessage('Укажите корректные широту и долготу.');return;}void selectPoint(chosen);}}>Показать точку</button>{!key&&message&&<p role="status">{message}</p>}</Disclosure>
  </>}
  </section>;
 }
