@@ -7,6 +7,7 @@ import json
 import os
 import ssl
 import time
+from pathlib import Path
 from urllib.parse import parse_qsl, urlparse
 
 import certifi
@@ -18,6 +19,10 @@ API = "https://platform-api2.max.ru"
 def _client(timeout: float) -> httpx.AsyncClient:
     # Keep the extra trust roots scoped to outbound MAX requests.
     ca_bundle = os.getenv("MAX_CA_BUNDLE")
+    if not ca_bundle:
+        project_bundle = Path(__file__).resolve().parents[1] / "runtime-data" / "certs" / "max-ca.pem"
+        if project_bundle.is_file():
+            ca_bundle = str(project_bundle)
     verify = ssl.create_default_context(cafile=certifi.where()) if ca_bundle else True
     if ca_bundle:
         verify.load_verify_locations(cafile=ca_bundle)
