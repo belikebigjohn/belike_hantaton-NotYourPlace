@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import logging
 import os
 import secrets
+import shutil
 import sqlite3
 import threading
 import time
@@ -15,7 +17,7 @@ from typing import Literal
 from uuid import UUID
 
 import httpx
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -30,6 +32,7 @@ DATA_DIR = Path(os.getenv("DATA_DIR", ROOT / "runtime-data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 DATABASE = DATA_DIR / "reports.sqlite3"
 MAX_UPLOAD = 15 * 1024 * 1024
+PHOTO_CHUNK = 512 * 1024
 COOKIE_NAME = "chuzhoe_session"
 ALLOWED_ORIGINS = set(os.getenv("ALLOWED_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:8000,http://localhost:8000,https://test.agentsofcremlin.netcraze.pro,https://gosdyma.ru").split(","))
 
@@ -182,6 +185,28 @@ async def analyze(scene_photo: UploadFile = File(...), plate_photo: UploadFile =
     return result
 
 
+@app.post("/api/reports/{report_id}/analyze")
+async def analyze_saved_photos(report_id: str, request: Request):
+    import asyncio
+    read_report(report_id, request.state.owner)
+    images = {}
+    quality = {}
+    with connection() as database:
+        rows = database.execute("SELECT kind,path FROM photos WHERE report_id=? AND active=1", (report_id,)).fetchall()
+    for row in rows:
+        if row["kind"] in {"scene", "plate"}:
+            try:
+                images[row["kind"]], quality[row["kind"]] = decode_image(Path(row["path"]).read_bytes())
+            except (OSError, ValueError) as error:
+                raise HTTPException(422, "Не удалось прочитать сохранённую фотографию. Загрузите её ещё раз.") from error
+    if set(images) != {"scene", "plate"}:
+        raise HTTPException(422, "Добавьте оба снимка перед проверкой.")
+    result = await asyncio.to_thread(engine.analyze, images["scene"], images["plate"])
+    result["quality"] = quality
+    result["additional_evidence"] = {"marking": "unknown", "vehicle_disability_sign": "unknown"}
+    return result
+
+
 @app.post("/api/camera-preview")
 async def camera_preview(kind: Literal["scene", "plate"] = Form(...), frame: UploadFile = File(...)):
     import asyncio
@@ -326,6 +351,58 @@ async def upload_photos(report_id: str, request: Request, scene_photo: UploadFil
             path.unlink(missing_ok=True)
         raise
     return read_report(report_id, request.state.owner)
+
+
+@app.post("/api/reports/{report_id}/photo-chunks/{kind}/{upload_id}/{index}")
+async def upload_photo_chunk(
+    report_id: str, kind: Literal["scene", "plate"], upload_id: str, index: int, request: Request,
+    chunk_count: int = Header(..., alias="X-Chunk-Count"),
+    photo_size: int = Header(..., alias="X-Photo-Size"),
+    photo_sha256: str = Header(..., alias="X-Photo-SHA256"),
+    photo_source: str = Header("upload", alias="X-Photo-Source"),
+    captured_at: str = Header("", alias="X-Captured-At"),
+):
+    read_report(report_id, request.state.owner)
+    try:
+        valid_id = str(UUID(upload_id)) == upload_id
+    except ValueError:
+        valid_id = False
+    if not valid_id or not 0 < photo_size <= MAX_UPLOAD or chunk_count != (photo_size + PHOTO_CHUNK - 1) // PHOTO_CHUNK or not 0 <= index < chunk_count or len(photo_sha256) != 64 or any(c not in "0123456789abcdef" for c in photo_sha256):
+        raise HTTPException(422, "Неверные параметры загрузки фотографии.")
+    chunk = await request.body()
+    expected_size = min(PHOTO_CHUNK, photo_size - index * PHOTO_CHUNK)
+    if len(chunk) != expected_size:
+        raise HTTPException(422, "Часть фотографии получена не полностью. Повторите загрузку.")
+    upload_root = DATA_DIR / "photo-chunks" / request.state.owner / report_id / kind
+    if index == 0 and upload_root.exists():
+        for old in upload_root.iterdir():
+            if old.is_dir() and time.time() - old.stat().st_mtime > 24 * 60 * 60:
+                shutil.rmtree(old)
+    directory = upload_root / upload_id
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"{index:03d}"
+    if path.exists():
+        if path.read_bytes() != chunk:
+            raise HTTPException(409, "Часть фотографии уже загружена с другим содержимым.")
+    else:
+        with path.open("xb") as handle:
+            handle.write(chunk)
+    if index != chunk_count - 1:
+        return {"received": index}
+    try:
+        data = b"".join((directory / f"{number:03d}").read_bytes() for number in range(chunk_count))
+    except FileNotFoundError as error:
+        raise HTTPException(409, "Не все части фотографии дошли до сервера. Повторите загрузку.") from error
+    if len(data) != photo_size or hashlib.sha256(data).hexdigest() != photo_sha256:
+        raise HTTPException(422, "Фотография повреждена при передаче. Повторите загрузку.")
+    extension = "png" if data.startswith(b"\x89PNG") else "webp" if data.startswith(b"RIFF") and data[8:12] == b"WEBP" else "jpg"
+    photo = UploadFile(file=io.BytesIO(data), filename=f"{kind}.{extension}")
+    if kind == "scene":
+        result = await upload_photos(report_id, request, scene_photo=photo, plate_photo=None, scene_source=photo_source, plate_source="upload", scene_captured_at=captured_at, plate_captured_at="")
+    else:
+        result = await upload_photos(report_id, request, scene_photo=None, plate_photo=photo, scene_source="upload", plate_source=photo_source, scene_captured_at="", plate_captured_at=captured_at)
+    shutil.rmtree(directory)
+    return result
 
 
 @app.get("/api/reports/{report_id}/photos/{kind}")

@@ -75,6 +75,51 @@ def test_invalid_second_photo_does_not_leave_partial_upload(clients, picture):
     assert list(main.DATA_DIR.rglob("*.png")) == []
 
 
+def test_chunked_photo_upload_preserves_original_and_is_owner_scoped(clients, monkeypatch):
+    first, second = clients
+    report_id = create(first)
+    noise = np.random.default_rng(27).integers(0, 256, (800, 800, 3), dtype=np.uint8)
+    photo = cv2.imencode(".png", noise)[1].tobytes()
+    assert len(photo) > main.PHOTO_CHUNK
+    count = (len(photo) + main.PHOTO_CHUNK - 1) // main.PHOTO_CHUNK
+    headers = {"X-Chunk-Count": str(count), "X-Photo-Size": str(len(photo)), "X-Photo-SHA256": hashlib.sha256(photo).hexdigest(), "X-Photo-Source": "camera", "X-Captured-At": "2026-11-27T12:00:00+05:00", "Content-Type": "application/octet-stream"}
+    upload_id = str(uuid4())
+    path = f"/api/reports/{report_id}/photo-chunks/scene/{upload_id}"
+    assert second.post(f"{path}/0", content=photo[:main.PHOTO_CHUNK], headers=headers).status_code == 404
+    for index in range(count):
+        chunk = photo[index * main.PHOTO_CHUNK:(index + 1) * main.PHOTO_CHUNK]
+        response = first.post(f"{path}/{index}", content=chunk, headers=headers)
+        assert response.status_code == 200, response.text
+        if index < count - 1:
+            assert first.get(f"/api/reports/{report_id}").json()["photos"] == {}
+    metadata = response.json()["photos"]["scene"]
+    assert metadata["sha256"] == headers["X-Photo-SHA256"]
+    assert metadata["source"] == "camera"
+    assert first.get(metadata["url"]).content == photo
+    assert second.get(metadata["url"]).status_code == 404
+    assert not list(main.DATA_DIR.rglob(upload_id))
+
+
+def test_saved_analysis_uses_uploaded_originals(clients, picture, monkeypatch):
+    first, second = clients
+    report_id = create(first)
+    assert attach(first, report_id, picture).status_code == 200
+    monkeypatch.setattr(main.engine, "analyze", lambda scene, plate: {"plate": {"value": "", "needs_review": True}, "signs": []})
+    assert second.post(f"/api/reports/{report_id}/analyze").status_code == 404
+    response = first.post(f"/api/reports/{report_id}/analyze")
+    assert response.status_code == 200
+    assert set(response.json()["quality"]) == {"scene", "plate"}
+
+
+def test_chunked_photo_rejects_changed_bytes(clients, picture):
+    first, _ = clients
+    report_id = create(first)
+    headers = {"X-Chunk-Count": "1", "X-Photo-Size": str(len(picture)), "X-Photo-SHA256": hashlib.sha256(b"different").hexdigest(), "Content-Type": "application/octet-stream"}
+    response = first.post(f"/api/reports/{report_id}/photo-chunks/scene/{uuid4()}/0", content=picture, headers=headers)
+    assert response.status_code == 422
+    assert first.get(f"/api/reports/{report_id}").json()["photos"] == {}
+
+
 def test_retake_invalidates_confirmation_and_keeps_original(clients, picture):
     first, _ = clients
     report_id = create(first)

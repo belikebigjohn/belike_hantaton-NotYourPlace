@@ -43,9 +43,9 @@ export default function App(){
  async function persist(patch:Partial<Draft>={}):Promise<Report>{const data={...draftRef.current,...patch};const dirty={...filesRef.current};let report:Report;try{report=data.id?await api.update(data.id,{...data,status:Object.keys(dirty).length?'draft':data.status}):await api.create({...data,status:'draft'});}catch(error){if(error instanceof ApiError&&error.status===404&&data.id){if(!dirty.scene||!dirty.plate)throw new Error('Сессия старого черновика истекла. Начните новую фиксацию и добавьте оба снимка.',{cause:error});report=await api.create({...data,id:undefined,creation_key:crypto.randomUUID(),status:'draft'});setMessage('Сессия обновлена. Фотографии сохраняются в новой записи.');}else throw error;}setDraft(report);draftRef.current=report;if(Object.keys(dirty).length){report=await api.upload(report.id,dirty,sourcesRef.current,captureTimesRef.current);setDraft(report);draftRef.current=report;setFiles({});filesRef.current={};setSources({});}if(patch.status&&report.status!==patch.status){report=await api.update(report.id,{...data,...patch});setDraft(report);draftRef.current=report;}return report;}
  function start(){setDraft(blank());setFiles({});setSources({});setCapturedAt({});setRestore(true);setTimeConfirmed(false);setPhotosConfirmed(false);setScreen('scene');}
  async function analyze(){await run('Проверяем обе фотографии…',async()=>{
-  const captured={...filesRef.current};await persist();
+  await persist();
   let analysis;
-  try{const blobs={...captured};for(const kind of ['scene','plate'] as Kind[])if(!blobs[kind]&&draftRef.current.id)blobs[kind]=await api.photoBlob(draftRef.current.id,kind);analysis=confirmReview(await api.analyze(blobs),false);}
+  try{analysis=confirmReview(await api.analyzeSaved(draftRef.current.id!),false);}
   catch{analysis=emptyAnalysis();setMessage('Проверьте номер на каждом фото и обозначение места.');}
   const verifiedPlate=reviewComparison(analysis)==='match'?normalizePlateValue(reviewValues(analysis).scene_value):'';
   update({analysis,plate:verifiedPlate,confirmed:false,status:'draft'});setPhotosConfirmed(false);
