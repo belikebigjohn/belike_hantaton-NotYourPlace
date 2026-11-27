@@ -235,3 +235,18 @@
 .page:not([data-contrast=normal]) .helpTopic a{color:var(--vision-link)!important;border:0!important;background:transparent!important;text-decoration:underline}
 @media(prefers-reduced-motion:reduce){.disclosureBody,.disclosure[data-open=true] .disclosureBody,.disclosureHeading svg{transition:none}}
 .page[data-animations=false],.page[data-animations=false] *, .page[data-animations=false] *::before,.page[data-animations=false] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+
+/* A brief mobile entrance makes the home screen feel responsive without delaying taps. */
+@media (max-width:520px){
+ .page[data-animations=true] .content[data-screen=home] .homeTitle{animation:homeEnter .38s cubic-bezier(.2,.8,.2,1) both}
+ .page[data-animations=true] .content[data-screen=home] .cityScene{animation:homeEnter .48s .08s cubic-bezier(.2,.8,.2,1) both}
+ .page[data-animations=true] .content[data-screen=home] .homeActions{animation:homeEnter .48s .16s cubic-bezier(.2,.8,.2,1) both}
+ .page[data-animations=true] .content:not([data-screen=home])>.screenTitle{animation:homeEnter .28s cubic-bezier(.2,.8,.2,1) both}
+}
+@keyframes homeEnter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){
+ .page[data-animations=true] .content[data-screen=home] .homeTitle,
+ .page[data-animations=true] .content[data-screen=home] .cityScene,
+ .page[data-animations=true] .content[data-screen=home] .homeActions,
+ .page[data-animations=true] .content:not([data-screen=home])>.screenTitle{animation:none}
+}
