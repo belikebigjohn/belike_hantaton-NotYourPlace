@@ -26,4 +26,5 @@ describe('report API integration contract',()=>{
  });
  it('turns inaccessible network into a recoverable message',async()=>{vi.stubGlobal('fetch',vi.fn().mockRejectedValue(new TypeError('network')));await expect(api.list()).rejects.toThrow('Нет связи');});
  it('exposes server access errors without inventing a successful result',async()=>{vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({error:{code:'NOT_FOUND',message:'Материалы не найдены'}}),{status:404})));await expect(api.get('private')).rejects.toThrow('Материалы не найдены');});
+ it('explains an HTML proxy size rejection during photo upload',async()=>{vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response('<html>Request Entity Too Large</html>',{status:413,headers:{'Content-Type':'text/html'}})));await expect(api.upload('abc',{scene:new Blob(['photo'],{type:'image/jpeg'})})).rejects.toThrow('Сервер отклонил размер фотографий');});
 });

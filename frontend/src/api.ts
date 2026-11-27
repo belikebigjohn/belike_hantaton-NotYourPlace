@@ -6,7 +6,7 @@ export interface CameraPreview {width:number;height:number;quality:{warnings:str
 async function request<T>(path:string,init:RequestInit={}):Promise<T>{
   const controller=new AbortController(); const timer=setTimeout(()=>controller.abort(),90000);
   try {const response=await fetch(`/api${path}`,{...init,headers:authHeaders(init.headers),credentials:'include',signal:init.signal||controller.signal});
-    if(!response.ok){const body=await response.json().catch(()=>null);throw new ApiError(body?.error?.message||'Не удалось сохранить данные. Попробуйте ещё раз.',response.status);}
+    if(!response.ok){const body=await response.json().catch(()=>null);const fallback=response.status===413?'Сервер отклонил размер фотографий. Они остались в черновике на устройстве. Администратору нужно увеличить лимит загрузки прокси.':response.status===502||response.status===503||response.status===504?'Сервер временно недоступен. Фотографии остались на устройстве — повторите попытку позже.':'Не удалось сохранить данные. Попробуйте ещё раз.';throw new ApiError(body?.error?.message||fallback,response.status);}
     return response.json() as Promise<T>;
   }catch(error){if(error instanceof DOMException&&error.name==='AbortError')throw new Error('Проверка заняла слишком много времени. Повторите попытку или проверьте данные сами.',{cause:error});if(error instanceof TypeError)throw new Error('Нет связи. Фотографии сохранены на устройстве — попробуйте ещё раз.',{cause:error});throw error;}finally{clearTimeout(timer);}
 }

@@ -31,7 +31,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 DATABASE = DATA_DIR / "reports.sqlite3"
 MAX_UPLOAD = 15 * 1024 * 1024
 COOKIE_NAME = "chuzhoe_session"
-ALLOWED_ORIGINS = set(os.getenv("ALLOWED_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:8000,http://localhost:8000,https://test.agentsofcremlin.netcraze.pro").split(","))
+ALLOWED_ORIGINS = set(os.getenv("ALLOWED_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:8000,http://localhost:8000,https://test.agentsofcremlin.netcraze.pro,https://gosdyma.ru").split(","))
 
 
 def utc_now():

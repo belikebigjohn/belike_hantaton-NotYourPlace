@@ -35,10 +35,10 @@ for x in (300, 745):
     d.ellipse((x-25, 540, x+25, 590), fill="#aebac7")
 d.rectangle((450, 478, 690, 535), fill="white")
 d.text((465, 480), "А001АА 86", fill="#142335", font=font(37))
-image.save(OUT / "overview-demo.png")
+image.save(OUT / "generated-overview-demo.png")
 
 image, d = base()
 d.rounded_rectangle((130, 270, 1150, 600), radius=35, fill="#245280")
 d.rounded_rectangle((290, 340, 990, 535), radius=12, fill="white", outline="#122338", width=8)
 d.text((352, 380), "А001АА 86", fill="#122338", font=font(96))
-image.save(OUT / "plate-demo.png")
+image.save(OUT / "generated-plate-demo.png")

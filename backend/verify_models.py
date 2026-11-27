@@ -24,15 +24,17 @@ def main():
     engine.load()
     samples = [("upstream-russian-plate-crop", blank, plate, "Е300ЕУ763")]
     overview = ROOT / "demo/overview-demo.png"
-    synthetic_plate = ROOT / "demo/plate-demo.png"
-    if overview.exists() and synthetic_plate.exists():
-        samples.append(("synthetic-demo-not-street-validation", decode_image(overview.read_bytes())[0], decode_image(synthetic_plate.read_bytes())[0], "А001АА86"))
+    second_demo = ROOT / "demo/plate-demo.png"
+    for name, path, expected in (("user-demo-first-car", overview, "А640МК198"), ("user-demo-second-car", second_demo, "А215МР198")):
+        if path.exists():
+            photo = decode_image(path.read_bytes())[0]
+            samples.append((name, photo, photo, expected))
     results = []
     for name, scene, image, expected in samples:
         start = time.perf_counter()
         result = engine.analyze(scene, image)
         results.append({"name": name, "expected": expected, "exact_match": result["plate"]["value"] == expected, "duration_ms": round((time.perf_counter() - start) * 1000), "result": result})
-    report = {"generated_at": datetime.now(timezone.utc).isoformat(), "device": platform.platform(), "processor": platform.processor(), "health": engine.health(), "samples": results, "source": source, "limits": "Upstream example may overlap training data; one crop and a synthetic drawing do not estimate precision/recall or generalization. No independent road-sign or windshield/marking validation set is available."}
+    report = {"generated_at": datetime.now(timezone.utc).isoformat(), "device": platform.platform(), "processor": platform.processor(), "health": engine.health(), "samples": results, "source": source, "limits": "Upstream example may overlap training data; two user-provided demo photos show different vehicles and are checked separately. These samples do not estimate precision/recall or generalization. No independent road-sign or windshield/marking validation set is available."}
     output = ROOT / "docs/model-smoke-results.json"
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps({"health": report["health"], "results": [{key: sample[key] for key in ("name", "expected", "exact_match", "duration_ms")} for sample in results], "report": str(output)}, ensure_ascii=False, indent=2))

@@ -1,4 +1,4 @@
-"""Exercise the running application using only clearly synthetic local fixtures.
+"""Exercise the local application with user-provided demo imagery.
 
 No official submission, external geocoder call or real personal data is used.
 Run: .venv/Scripts/python.exe scripts/integration_smoke.py
@@ -25,7 +25,7 @@ def main():
     parser.add_argument('--base-url', default='http://127.0.0.1:8000')
     args = parser.parse_args()
     if not args.base_url.startswith(('http://127.0.0.1:', 'http://localhost:')):
-        raise SystemExit('Use a local test server. This script creates and deletes its own synthetic record.')
+        raise SystemExit('Use a local test server. This script creates and deletes its own demo record.')
     result = {}
     started = time.perf_counter()
     with httpx.Client(base_url=args.base_url, timeout=90) as client:
@@ -54,7 +54,9 @@ def main():
             assert retried.json()['id'] == report_id, 'Retry created a duplicate report'
             result['idempotent_create'] = True
             scene = (ROOT / 'demo/overview-demo.png').read_bytes()
-            plate = (ROOT / 'demo/plate-demo.png').read_bytes()
+            # The two supplied demo files show different cars. Use one image for
+            # both slots here so this smoke run does not fabricate a matching pair.
+            plate = scene
             files = {'scene_photo': ('scene.png', scene, 'image/png'), 'plate_photo': ('plate.png', plate, 'image/png')}
             uploaded = client.post(f'/api/reports/{report_id}/photos', files=files, data={'scene_source': 'upload', 'plate_source': 'upload'})
             uploaded.raise_for_status()
@@ -66,16 +68,16 @@ def main():
             assert all(candidate['photo_id'] == kind for kind, per_photo in analysis['plates_by_photo'].items() for candidate in per_photo['candidates'])
             result['analysis_ran'] = True
             result['both_photos_analyzed_with_scoped_boxes'] = True
-            result['synthetic_ocr_requires_review'] = analysis['plate']['needs_review']
-            analysis['plate_review'] = {'scene_value': 'А001АА86', 'plate_value': 'А001АА86', 'confirmed': True}
+            result['demo_ocr_requires_review'] = analysis['plate']['needs_review']
+            analysis['plate_review'] = {'scene_value': 'А640МК198', 'plate_value': 'А640МК198', 'confirmed': True}
             data = {
-                'status': 'prepared', 'plate': 'А001АА86', 'address': 'СИНТЕТИЧЕСКИЕ МАТЕРИАЛЫ. Реального события нет.',
+                'status': 'prepared', 'plate': 'А640МК198', 'address': 'ДЕМОНСТРАЦИОННЫЕ МАТЕРИАЛЫ. Реального события нет.',
                 'observed_at': datetime.now(timezone(timedelta(hours=5))).isoformat(), 'designation': 'Обозначение требует проверки',
-                'observation': 'Только проверка приложения на программно нарисованных кадрах.',
+                'observation': 'Только проверка приложения на предоставленном демонстрационном фото.',
                 'recipient': 'Демонстрационное подразделение', 'applicant_name': 'Демонстрационный заявитель',
                 'applicant_email': 'demo@example.invalid', 'confirmed': True, 'analysis': analysis,
             }
-            different_review = {'scene_value': 'А001АА86', 'plate_value': 'М456НО199', 'confirmed': True}
+            different_review = {'scene_value': 'А640МК198', 'plate_value': 'М456НО199', 'confirmed': True}
             rejected = client.patch(f'/api/reports/{report_id}', json={**data, 'analysis': {**analysis, 'plate_review': different_review}})
             assert rejected.status_code == 422, 'Different photo numbers must block package preparation'
             result['different_photo_numbers_block_package'] = True
@@ -111,9 +113,9 @@ def main():
                 deleted = client.delete(f'/api/reports/{own_id}')
                 deleted.raise_for_status()
                 assert client.get(f'/api/reports/{own_id}').status_code == 404
-            result['synthetic_record_deleted'] = True
+            result['demo_record_deleted'] = True
     result['duration_seconds'] = round(time.perf_counter() - started, 2)
-    result['scope'] = 'Local API integration with synthetic fixtures; not street CV validation or human completion-time measurement.'
+    result['scope'] = 'Local API integration with a user-provided demo photo; not street CV validation or human completion-time measurement.'
     print(json.dumps(result, ensure_ascii=False, indent=2))
     (ROOT / 'docs/integration-smoke-results.json').write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
 

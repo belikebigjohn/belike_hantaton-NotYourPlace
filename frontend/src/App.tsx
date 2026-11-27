@@ -14,7 +14,7 @@ import Toast from './Toast';
 import HelpContent from './HelpContent';
 import Disclosure from './Disclosure';
 import {readDisplayPreferences,saveDisplayPreferences} from './displayPreferences';
-const warning='Проверьте, что в обращении указаны только сведения, которые вы наблюдали.';
+const warning='Указывайте только достоверные сведения. Расходы на проверку заведомо ложного обращения могут взыскать через суд (ч. 2 ст. 16 закона № 59-ФЗ).';
 const authorGitHubUrl='https://github.com/belikebigjohn';
 const blank=():Draft=>({creation_key:crypto.randomUUID(),status:'draft',plate:'',address:'',observed_at:new Date().toISOString(),latitude:null,longitude:null,accuracy:null,location_source:'',designation:'',observation:'',applicant_name:'',applicant_address:'',applicant_email:'',recipient:'',statement:'',confirmed:false,photos:{},analysis:null});
 const format=(date?:string)=>date?new Intl.DateTimeFormat('ru-RU',{dateStyle:'medium',timeStyle:'short'}).format(new Date(date)):'—';
